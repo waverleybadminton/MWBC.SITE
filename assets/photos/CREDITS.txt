@@ -1,0 +1,13 @@
+Photography — Wikimedia Commons (placeholder set, replace with own facility photography)
+
+hero-arena.jpg    "Internationaux de France de badminton 2025 - Huitieme de finales" by Hoolen — CC BY 4.0
+                  https://commons.wikimedia.org/wiki/File:Internationaux_de_France_de_badminton_2025_-_Huitieme_de_finales.jpg
+kinetic-smash.jpg "China vs. Denmark In The Mens Doubles Badminton Final" by Antony Stanley — CC BY-SA 2.0
+                  https://commons.wikimedia.org/wiki/File:China_vs._Denmark_In_The_Mens_Doubles_Badminton_Final_(8172629763).jpg
+player-smash.jpg  "Lee Chong Wei Prepares To Smash" by Antony Stanley — CC BY-SA 2.0
+                  https://commons.wikimedia.org/wiki/File:Lee_Chong_Wei_Prepares_To_Smash.jpg
+court-topdown.jpg "Internationaux de France de badminton 2016 - Quarter finals - Women's doubles 03" by Remi Mathis — CC BY-SA 4.0
+                  https://commons.wikimedia.org/wiki/File:Internationaux_de_France_de_badminton_2016_-_Quarter_finals_-_Women%27s_doubles_03.jpg
+
+centre-court.jpg  "Internationaux de France de badminton 2016 - Quarter finals - Men's doubles 02" by Remi Mathis — CC BY-SA 4.0
+                  (replaced player-smash.jpg to avoid featuring an identifiable player)
