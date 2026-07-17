@@ -124,8 +124,8 @@
     "Book Your Comeback Court": "预订你的回归之战",
 
     /* ---------- visit ---------- */
-    "Visit us": "到场体验",
-    "Easy to find. Easy to book.": "好找、好订、好打球。",
+    "Visit us": "欢迎到访",
+    "Easy to find. Easy to book.": "地点好找，订场轻松。",
     "Address": "地址",
     "Hours": "营业时间",
     "Monday-Friday": "周一至周五",
