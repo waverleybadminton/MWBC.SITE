@@ -1,0 +1,16 @@
+# Netlify config for Mount Waverley Badminton Centre
+# The repository root IS the site, so publish from here.
+[build]
+  publish = "."
+
+# HTML is always revalidated so content updates appear immediately.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Fingerprinted assets can be cached hard.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
