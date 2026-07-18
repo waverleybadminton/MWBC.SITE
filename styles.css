@@ -409,8 +409,8 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 42%;
-  filter: saturate(0.98) contrast(1.02) brightness(1.0);
+  object-position: center 50%;
+  filter: saturate(1) contrast(1.03);
   animation: hero-zoom 18s ease-out forwards;
 }
 
@@ -425,8 +425,8 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
 
 .hero-scrim {
   background:
-    linear-gradient(180deg, rgba(7, 22, 38, 0.36) 0%, rgba(7, 22, 38, 0.12) 45%, rgba(7, 22, 38, 0.58) 100%),
-    linear-gradient(78deg, rgba(7, 22, 38, 0.82) 0%, rgba(7, 22, 38, 0.36) 55%, rgba(7, 22, 38, 0.05) 100%);
+    linear-gradient(180deg, rgba(7, 22, 38, 0.30) 0%, rgba(7, 22, 38, 0.14) 40%, rgba(7, 22, 38, 0.60) 100%),
+    linear-gradient(90deg, rgba(7, 22, 38, 0.90) 0%, rgba(7, 22, 38, 0.74) 26%, rgba(7, 22, 38, 0.34) 58%, rgba(7, 22, 38, 0) 100%);
 }
 
 .hero-inner { position: relative; width: 100%; max-width: 1200px; margin: 0 auto; }
@@ -541,7 +541,7 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
   pointer-events: none;
 }
 
-.centre-photo { aspect-ratio: 4 / 4.2; }
+.centre-photo { aspect-ratio: 4 / 4.9; }
 
 /* keep loud tournament branding muted so it reads as one system */
 .centre-photo img { filter: saturate(1) contrast(1.02); object-position: center 50%; }
@@ -640,6 +640,36 @@ html[data-language="zh"] .segment-card h3 { text-transform: none; font-stretch: 
 .kinetic-inner { position: relative; }
 .kinetic-inner h2 { max-width: 14ch; color: var(--ink); }
 .kinetic-inner p { max-width: 30rem; color: var(--ink-soft); margin-bottom: 1.6rem; }
+
+/* ---------- action band (dark, action photography) ---------- */
+
+.action-band {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  padding: clamp(4.5rem, 12vw, 8rem) clamp(1.25rem, 4.5vw, 3rem);
+}
+
+.action-band-media, .action-band-media img, .action-band-scrim { position: absolute; inset: 0; }
+
+.action-band-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  filter: saturate(0.96) contrast(1.04);
+}
+
+.action-band-scrim {
+  background:
+    linear-gradient(180deg, rgba(7, 22, 38, 0.34) 0%, rgba(7, 22, 38, 0.30) 100%),
+    linear-gradient(90deg, rgba(7, 22, 38, 0.88) 0%, rgba(7, 22, 38, 0.58) 46%, rgba(7, 22, 38, 0.12) 100%);
+}
+
+.action-band-inner { position: relative; max-width: 1200px; margin: 0 auto; }
+.action-band-inner .kicker { color: var(--blue-bright); }
+.action-band-inner h2 { max-width: 16ch; color: #fff; }
+.action-band-inner p { max-width: 34rem; color: var(--white-soft); margin-bottom: 1.6rem; }
 
 /* ---------- comeback / quote ---------- */
 
@@ -1659,7 +1689,7 @@ html[data-language="zh"] .footer-tagline { text-transform: none; font-stretch: 1
 
 @media (min-width: 920px) {
   .booking-calendar-layout { grid-template-columns: 1.05fr 1fr; }
-  .centre-grid { grid-template-columns: 1.15fr 1fr; gap: 3.5rem; }
+  .centre-grid { grid-template-columns: 1fr 1.05fr; gap: 3.5rem; }
   .visit-grid { grid-template-columns: 1fr 1.25fr; }
   .contact-grid { grid-template-columns: 1fr 1.25fr; }
   .about-grid { grid-template-columns: 1.5fr 1fr; gap: 3rem; }
