@@ -714,6 +714,13 @@ html[data-language="zh"] .segment-card h3 { text-transform: none; font-stretch: 
 .page-sub { max-width: 36rem; font-size: 1.05rem; color: var(--ink-soft); margin-bottom: 1.4rem; }
 .page-head .btn-row { margin-bottom: 0.4rem; }
 
+.page-head-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; align-items: center; }
+.page-head-photo { aspect-ratio: 4 / 3; width: 100%; }
+
+@media (min-width: 900px) {
+  .page-head-split .page-head-grid { grid-template-columns: 1.25fr 1fr; gap: 3.5rem; }
+}
+
 .page-head.has-photo .page-head-media { display: none; }
 
 .page-head.has-photo .shell { position: relative; }
