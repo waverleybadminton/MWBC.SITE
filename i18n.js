@@ -283,6 +283,7 @@
     /* ---------- admin ---------- */
     "Staff access": "员工入口",
     "Best fit — keeps courts gap-free": "最佳时段——让场地不留空档",
+    "Best fit": "最佳时段",
     "best fit": "最佳时段",
     "leaves a short gap": "会留下一小段空档",
     "Auto — best available": "自动（分配最佳可用场地）",
