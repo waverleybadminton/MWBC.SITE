@@ -409,8 +409,8 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 30%;
-  filter: saturate(0.92) contrast(1.0) brightness(1.16);
+  object-position: center 42%;
+  filter: saturate(0.98) contrast(1.02) brightness(1.0);
   animation: hero-zoom 18s ease-out forwards;
 }
 
@@ -425,8 +425,8 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
 
 .hero-scrim {
   background:
-    linear-gradient(180deg, rgba(7, 22, 38, 0.28) 0%, rgba(7, 22, 38, 0.06) 45%, rgba(7, 22, 38, 0.55) 100%),
-    linear-gradient(78deg, rgba(7, 22, 38, 0.72) 0%, rgba(7, 22, 38, 0.26) 55%, rgba(7, 22, 38, 0) 100%);
+    linear-gradient(180deg, rgba(7, 22, 38, 0.36) 0%, rgba(7, 22, 38, 0.12) 45%, rgba(7, 22, 38, 0.58) 100%),
+    linear-gradient(78deg, rgba(7, 22, 38, 0.82) 0%, rgba(7, 22, 38, 0.36) 55%, rgba(7, 22, 38, 0.05) 100%);
 }
 
 .hero-inner { position: relative; width: 100%; max-width: 1200px; margin: 0 auto; }
@@ -531,7 +531,7 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
   box-shadow: var(--shadow-m);
 }
 
-.photo-frame img { width: 100%; height: 100%; object-fit: cover; filter: saturate(0.78) contrast(1.06); }
+.photo-frame img { width: 100%; height: 100%; object-fit: cover; filter: saturate(1) contrast(1.02); }
 
 .photo-frame::after {
   content: "";
@@ -544,7 +544,7 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
 .centre-photo { aspect-ratio: 4 / 4.2; }
 
 /* keep loud tournament branding muted so it reads as one system */
-.centre-photo img { filter: saturate(0.55) contrast(1.06); object-position: center 46%; }
+.centre-photo img { filter: saturate(1) contrast(1.02); object-position: center 50%; }
 
 .stat-row {
   display: grid;
