@@ -1697,3 +1697,15 @@ html[data-language="zh"] .footer-tagline { text-transform: none; font-stretch: 1
 }
 
 .admin-back-link:hover { color: var(--blue-deep); }
+
+/* ---------- booking: gap-minimising slot hints ---------- */
+.slot-button { position: relative; }
+.slot-flag { position: absolute; top: 3px; right: 5px; font-size: 0.62rem; line-height: 1; font-weight: 700; }
+.slot-flag.rec { color: var(--green); }
+.slot-flag.gap { color: #b7791f; }
+.slot-clean { border-color: rgba(31, 128, 67, 0.55); background: rgba(31, 128, 67, 0.06); }
+.slot-clean.selected { background: var(--blue); border-color: var(--blue); }
+.slot-button.selected .slot-flag { color: #fff; }
+.slot-gap { opacity: 0.72; }
+.slot-legend { grid-column: 1 / -1; margin: 0 0 0.15rem; font-size: 0.72rem; color: var(--ink-soft); }
+.slot-legend .rec { color: var(--green-ink); font-weight: 600; }

@@ -392,12 +392,15 @@ function hasConflict(candidate) {
 }
 
 function allocateManualCourts(date, time, duration, firstCourt, count) {
-  const startIndex = courts.indexOf(firstCourt);
-  const orderedCourts = [
-    ...courts.slice(Math.max(0, startIndex)),
-    ...courts.slice(0, Math.max(0, startIndex))
-  ];
-  return orderedCourts.filter((court) => !hasConflict({ date, time, duration, court })).slice(0, count);
+  // Best-fit allocation via the shared scheduler; falls back to a simple scan.
+  const ranked = window.MWBC_SCHEDULER
+    ? window.MWBC_SCHEDULER.allocate(readBookings(), date, time, duration, courts.length)
+    : courts.filter((court) => !hasConflict({ date, time, duration, court }));
+  if (firstCourt && firstCourt !== "auto") {
+    // Staff picked a specific court — honour it, then best-fit the rest.
+    return [...ranked.filter((c) => c === firstCourt), ...ranked.filter((c) => c !== firstCourt)].slice(0, count);
+  }
+  return ranked.slice(0, count);
 }
 
 function bindManualBooking() {

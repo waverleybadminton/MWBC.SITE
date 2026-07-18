@@ -213,16 +213,22 @@ function hasEnoughCourts(dateValue, time, duration, courtCount = selectedCourtCo
   return availableCourtsFor(dateValue, time, duration).length >= courtCount;
 }
 
+function maxBookingDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 14); // bookings open 2 weeks ahead
+  const offset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - offset).toISOString().slice(0, 10);
+}
+
 function isSlotAvailable(dateValue, time, duration, courtCount = selectedCourtCount()) {
   return fitsOpeningHours(dateValue, time, duration)
     && !isPastSlot(dateValue, time)
-    && !isNaturallyBusy(dateValue, time, duration)
     && hasEnoughCourts(dateValue, time, duration, courtCount);
 }
 
 function dayStatus(dateValue) {
   const today = isoToday();
-  if (dateValue < today) return "closed";
+  if (dateValue < today || dateValue > maxBookingDate()) return "closed";
   const duration = durationInput.value;
   const needed = selectedCourtCount();
   const anyAvailable = generateSlots(dateValue).some((slot) => {
@@ -292,16 +298,41 @@ function renderSlots() {
     return;
   }
 
-  slots.forEach((slot) => {
+  // Gap-minimising guidance: flag times that pack cleanly vs. ones that would
+  // leave a short (unsellable) gap. We steer harder the further out the date is,
+  // and always in peak hours; close to the date we just let people fill courts.
+  const bookings = readBookings();
+  const steer = window.MWBC_SCHEDULER ? window.MWBC_SCHEDULER.steerWeight(dateValue, isoToday()) : 0;
+  const evals = slots.map((slot) => window.MWBC_SCHEDULER
+    ? window.MWBC_SCHEDULER.evaluate(bookings, dateValue, slot.time, duration, courtCount)
+    : { clean: true, peak: false });
+  const anyGap = evals.some((e) => !e.clean);
+  const markGaps = anyGap && evals.some((e) => !e.clean && (steer >= 0.34 || e.peak));
+
+  if (anyGap) {
+    const legend = document.createElement("p");
+    legend.className = "slot-legend";
+    legend.innerHTML = `<span class="rec">✓ ${t("Best fit — keeps courts gap-free")}</span>`;
+    slotList.append(legend);
+  }
+
+  slots.forEach((slot, index) => {
+    const ev = evals[index];
+    const recommended = anyGap && ev.clean;
+    const leavesGap = markGaps && !ev.clean;
     const { hour, minute } = parseSlotTime(slot.time);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "slot-button calendar-slot-button";
+    button.className = "slot-button calendar-slot-button"
+      + (recommended ? " slot-clean" : "")
+      + (leavesGap ? " slot-gap" : "");
     button.dataset.time = slot.time;
-    button.innerHTML = `<strong>${displayTime(hour, minute)}</strong>`;
-    button.setAttribute("aria-label", isChinese()
-      ? `选择${displayTime(hour, minute)}`
-      : `Select ${displayTime(hour, minute)}`);
+    button.innerHTML = `<strong>${displayTime(hour, minute)}</strong>`
+      + (recommended ? `<span class="slot-flag rec" aria-hidden="true">✓</span>`
+        : leavesGap ? `<span class="slot-flag gap" aria-hidden="true">•</span>` : "");
+    const base = isChinese() ? `选择${displayTime(hour, minute)}` : `Select ${displayTime(hour, minute)}`;
+    button.setAttribute("aria-label", recommended ? `${base} — ${t("best fit")}`
+      : leavesGap ? `${base} — ${t("leaves a short gap")}` : base);
     if (selectedSlot?.time === slot.time) button.classList.add("selected");
     button.addEventListener("click", () => selectSlot(slot.time));
     slotList.append(button);
@@ -312,7 +343,9 @@ function selectSlot(time) {
   const dateValue = dateInput.value;
   const duration = durationInput.value;
   const courtCount = selectedCourtCount();
-  const courtsForSlot = availableCourtsFor(dateValue, time, duration).slice(0, courtCount);
+  const courtsForSlot = window.MWBC_SCHEDULER
+    ? window.MWBC_SCHEDULER.allocate(readBookings(), dateValue, time, duration, courtCount)
+    : availableCourtsFor(dateValue, time, duration).slice(0, courtCount);
   if (courtsForSlot.length < courtCount) return;
   selectedSlot = {
     date: dateValue,
@@ -439,6 +472,7 @@ function bindBookingForm() {
 }
 
 dateInput.min = isoToday();
+dateInput.max = maxBookingDate();
 dateInput.value = isoToday();
 syncVisibleMonthToDate();
 
