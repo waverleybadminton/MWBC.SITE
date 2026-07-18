@@ -282,6 +282,12 @@
 
     /* ---------- admin ---------- */
     "Staff access": "员工入口",
+    "Auto — best available": "自动（分配最佳可用场地）",
+    "Reserved": "已预留",
+    "Leave on Auto to allocate the best available court.": "保持“自动”即可分配最合适的空闲场地。",
+    "Doubles pair mid-rally on a competition court": "双打组合在比赛场地上激烈对攻",
+    "Badminton doubles rally on a professional court": "专业球场上的羽毛球双打对攻",
+    "Call 0452 242 399": "致电 0452 242 399",
     "← Back to the main site": "← 返回主站",
     "Demo access — username: admin · password: MWBC2026 (already filled in)": "演示登录 — 用户名：admin · 密码：MWBC2026（已自动填写）",
     "Click any empty slot to add a booking. Click a booking to cancel it.": "点击任意空闲时段即可新增预订；点击已有预订可取消。",

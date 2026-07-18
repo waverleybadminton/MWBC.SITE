@@ -214,7 +214,7 @@ function quickBookCell(court, time) {
 function openBlankModal() {
   resetModalFields();
   manualDate.value = adminDate.value;
-  manualCourt.value = courts[0];
+  manualCourt.value = "auto";
   const times = getScheduleTimes();
   const bookings = selectedDateBookings();
   const firstFree = times.find((time) => !isCourtOccupied(bookings, courts[0], time)) || times[0];
@@ -376,8 +376,8 @@ function renderBookings() {
 
 function renderManualOptions() {
   const selectedCourt = manualCourt.value;
-  manualCourt.innerHTML = courts.map((court) => `<option value="${court}">${displayCourt(court)}</option>`).join("");
-  if (courts.includes(selectedCourt)) manualCourt.value = selectedCourt;
+  manualCourt.innerHTML = `<option value="auto">${t("Auto — best available")}</option>` + courts.map((court) => `<option value="${court}">${displayCourt(court)}</option>`).join("");
+  if (selectedCourt === "auto" || courts.includes(selectedCourt)) manualCourt.value = selectedCourt;
   const selectedTime = manualTime.value;
   manualTime.innerHTML = getScheduleTimes().map((time) => `<option value="${time}">${displayTime(time)}</option>`).join("");
   if (getScheduleTimes().includes(selectedTime)) manualTime.value = selectedTime;
@@ -416,7 +416,7 @@ function bindManualBooking() {
 
     const booking = {
       id: `MWBC-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      name: document.querySelector("#manual-name").value.trim(),
+      name: document.querySelector("#manual-name").value.trim() || t("Reserved"),
       phone: document.querySelector("#manual-phone").value.trim(),
       email: document.querySelector("#manual-email").value.trim(),
       court: assignedCourts[0],

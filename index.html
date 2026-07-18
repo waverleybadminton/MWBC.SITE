@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y24">
+    <link rel="stylesheet" href="./styles.css?v=y25">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -481,17 +481,19 @@
 
       <!-- ================= GROUPS & SCHOOLS ================= -->
       <section class="tab-panel" id="groups-schools" data-tab-panel="groups-schools">
-        <section class="page-head has-photo" aria-labelledby="groups-title">
-          <div class="page-head-media" aria-hidden="true">
-            <img src="./assets/photos/court-topdown.jpg" alt="" loading="lazy">
-          </div>
-          <div class="shell">
-            <p class="kicker">Groups, schools &amp; coaching</p>
-            <h1 class="display" id="groups-title">Group hire that runs itself</h1>
-            <p class="page-sub">Fourteen professional courts, one point of contact, and a venue that's genuinely easy to manage — serious badminton without the big-stadium noise.</p>
-            <div class="btn-row">
-              <a class="btn btn-book tab-link" href="#contact" data-tab-link="contact">Enquire About Group Hire</a>
+        <section class="page-head page-head-split" aria-labelledby="groups-title">
+          <div class="shell page-head-grid">
+            <div class="page-head-text">
+              <p class="kicker">Groups, schools &amp; coaching</p>
+              <h1 class="display" id="groups-title">Group hire that runs itself</h1>
+              <p class="page-sub">Fourteen professional courts, one point of contact, and a venue that's genuinely easy to manage — serious badminton without the big-stadium noise.</p>
+              <div class="btn-row">
+                <a class="btn btn-book tab-link" href="#contact" data-tab-link="contact">Enquire About Group Hire</a>
+              </div>
             </div>
+            <figure class="page-head-photo photo-frame">
+              <img src="./assets/photos/kinetic-smash.jpg" alt="Doubles pair mid-rally on a competition court" loading="lazy">
+            </figure>
           </div>
         </section>
 
@@ -595,11 +597,20 @@
 
       <!-- ================= CONTACT ================= -->
       <section class="tab-panel" id="contact" data-tab-panel="contact">
-        <section class="page-head" aria-labelledby="contact-title">
-          <div class="shell">
-            <p class="kicker">Contact</p>
-            <h1 class="display" id="contact-title">Talk to the team</h1>
-            <p class="page-sub">For group hire, school bookings, coaching blocks or regular weekly courts, tell us your preferred days and group size — we'll reply promptly.</p>
+        <section class="page-head page-head-split" aria-labelledby="contact-title">
+          <div class="shell page-head-grid">
+            <div class="page-head-text">
+              <p class="kicker">Contact</p>
+              <h1 class="display" id="contact-title">Talk to the team</h1>
+              <p class="page-sub">For group hire, school bookings, coaching blocks or regular weekly courts, tell us your preferred days and group size — we'll reply promptly.</p>
+              <div class="btn-row">
+                <a class="btn btn-book tab-link" href="#court-hire" data-tab-link="court-hire">Book a Court</a>
+                <a class="link-arrow" href="tel:+61452242399">Call 0452 242 399</a>
+              </div>
+            </div>
+            <figure class="page-head-photo photo-frame">
+              <img src="./assets/photos/centre-court.jpg" alt="Badminton doubles rally on a professional court" loading="lazy">
+            </figure>
           </div>
         </section>
 
@@ -763,11 +774,11 @@
                 <div class="manual-form-grid">
                 <label>
                   Customer
-                  <input id="manual-name" type="text" placeholder="Customer name" required>
+                  <input id="manual-name" type="text" placeholder="Customer name (optional)">
                 </label>
                 <label>
                   Phone
-                  <input id="manual-phone" type="tel" placeholder="04xx xxx xxx" required>
+                  <input id="manual-phone" type="tel" placeholder="04xx xxx xxx (optional)">
                 </label>
                 <label>
                   Email
@@ -775,7 +786,8 @@
                 </label>
                 <label>
                   Court
-                  <select id="manual-court" required></select>
+                  <select id="manual-court"></select>
+                  <small class="field-note">Leave on Auto to allocate the best available court.</small>
                 </label>
                 <label>
                   Number of courts
@@ -892,9 +904,9 @@
       </div>
     </footer>
 
-    <script src="./i18n.js?v=y24"></script>
-    <script src="./main.js?v=y24"></script>
-    <script src="./app.js?v=y24"></script>
-    <script src="./admin.js?v=y24"></script>
+    <script src="./i18n.js?v=y25"></script>
+    <script src="./main.js?v=y25"></script>
+    <script src="./app.js?v=y25"></script>
+    <script src="./admin.js?v=y25"></script>
   </body>
 </html>
