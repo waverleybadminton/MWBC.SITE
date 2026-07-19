@@ -558,6 +558,7 @@ async function showConfirmationForSession(sessionId, attempt) {
       return;
     }
     const courtCount = data.courts.length;
+    const paidCents = data.amountPaidCents ?? data.baseCents ?? 0;
     populateConfirmation({
       id: `MWBC-${String(data.group_id).slice(0, 6).toUpperCase()}`,
       email: data.email,
@@ -565,7 +566,7 @@ async function showConfirmationForSession(sessionId, attempt) {
       time: data.time,
       duration: data.duration,
       courtCount,
-      price: data.totalCents / 100,
+      price: paidCents / 100,
       cancellationHours: cancellationHours(data.date, courtCount)
     });
     if (data.status === "paid") {

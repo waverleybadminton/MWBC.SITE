@@ -384,6 +384,7 @@
     "Payment was cancelled — your court wasn't booked. You can try again.": "支付已取消——尚未预订场地。您可以重试。",
     "Confirming your payment…": "正在确认您的付款…",
     "Payment received — your court is confirmed. Details below.": "已收到付款——场地已确认。详情如下。",
+    "A small card processing fee is added at checkout.": "结账时将收取少量银行卡手续费。",
     "Select at least one adjacent square to reach the 1-hour minimum.": "请再选择一个相邻时段，以满足最少 1 小时的预订要求。",
     "Five-hour maximum selected.": "已选择线上预订最长时段：5 小时。",
     "Select more adjacent squares or enter the booking details.": "可继续选择相邻时段，或填写预订资料。",

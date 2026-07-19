@@ -15,11 +15,11 @@
     <meta http-equiv="Expires" content="0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="image" href="./assets/photos/exterior.jpg" fetchpriority="high">
+    <link rel="preload" as="image" imagesrcset="./assets/photos/hall-960.jpg 960w, ./assets/photos/hall.jpg 1800w" imagesizes="100vw" fetchpriority="high">
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y30">
+    <link rel="stylesheet" href="./styles.css?v=y31">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -53,7 +53,7 @@
 
         <section class="hero" aria-labelledby="hero-title">
           <div class="hero-media" aria-hidden="true">
-            <img src="./assets/photos/exterior.jpg" alt="" fetchpriority="high">
+            <img src="./assets/photos/hall.jpg" srcset="./assets/photos/hall-960.jpg 960w, ./assets/photos/hall.jpg 1800w" sizes="100vw" alt="" fetchpriority="high">
           </div>
           <div class="hero-scrim" aria-hidden="true"></div>
           <div class="hero-inner">
@@ -78,6 +78,10 @@
             <span>Now expanding to 14 courts</span><i>·</i><span>Yonex mats</span><i>·</i><span>LED lighting</span><i>·</i><span>Open daily until 11pm</span><i>·</i><span>EN / 中文 service</span><i>·</i>
           </div>
         </div>
+
+        <section class="exterior-band" aria-label="Mount Waverley Badminton Centre exterior">
+          <img src="./assets/photos/exterior.jpg" alt="Front entrance of Mount Waverley Badminton Centre at 57–59, 170 Forster Rd" loading="lazy">
+        </section>
 
         <section class="centre-section section light" aria-labelledby="centre-title">
           <div class="shell">
@@ -107,7 +111,7 @@
                 </div>
               </div>
               <figure class="centre-photo photo-frame" data-reveal>
-                <img src="./assets/photos/hall.jpg" alt="Inside Mount Waverley Badminton Centre — professional Yonex courts" loading="lazy">
+                <img src="./assets/photos/lateral.jpg" alt="Inside Mount Waverley Badminton Centre — professional Yonex courts" loading="lazy">
               </figure>
             </div>
           </div>
@@ -414,6 +418,7 @@
                   <strong id="summary-price">$0</strong>
                 </div>
               </div>
+              <p class="checkout-fee-note field-note">A small card processing fee is added at checkout.</p>
               <button class="btn btn-book btn-lg submit-booking" id="submit-booking" type="submit" disabled>Confirm &amp; Pay</button>
               <p class="form-note" id="form-note" role="status"></p>
             </form>
@@ -936,12 +941,12 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y30"></script>
-    <script src="./mwbc-scheduler.js?v=y30"></script>
-    <script src="./supabase-client.js?v=y30"></script>
-    <script src="./store.js?v=y30"></script>
-    <script src="./main.js?v=y30"></script>
-    <script src="./app.js?v=y30"></script>
-    <script src="./admin.js?v=y30"></script>
+    <script src="./i18n.js?v=y31"></script>
+    <script src="./mwbc-scheduler.js?v=y31"></script>
+    <script src="./supabase-client.js?v=y31"></script>
+    <script src="./store.js?v=y31"></script>
+    <script src="./main.js?v=y31"></script>
+    <script src="./app.js?v=y31"></script>
+    <script src="./admin.js?v=y31"></script>
   </body>
 </html>
