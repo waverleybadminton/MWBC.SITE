@@ -163,7 +163,8 @@
     "Online court booking": "在线场地预订",
     "Fair booking, guaranteed courts": "公平预订，场地保障",
     "MWBC has six courts and popular times fill quickly. To keep bookings fair for everyone, courts are confirmed by prepayment.": "MWBC 共有六片球场，热门时段很快订满。为了对每位球员都公平，场地以预付款方式确认。",
-    "Changes must be made before your cancellation window — 24 hours' notice per court for weekday bookings, and 48 hours per court for weekends and public holidays. Late cancellations and no-shows are charged because the court was held exclusively for your group.": "如需改期，请在取消期限之前操作——工作日预订每片场地需提前 24 小时通知，周末及公共假期每片场地需提前 48 小时。逾期取消或未到场将照常收费，因为该场地已为你的团体专属保留。",
+    "Changes must be made before your cancellation window — 24 hours' notice per court for weekday bookings, and 48 hours per court for weekends and public holidays. A $5 cancellation fee applies to all bookings, and no-shows are charged in full because the court was held exclusively for your group.": "如需改期，请在取消期限之前操作——工作日预订每片场地需提前 24 小时通知，周末及公共假期每片场地需提前 48 小时。所有预订均收取 5 澳元取消费，未到场将全额收费，因为该场地已为你的团体专属保留。",
+    "A $5 cancellation fee applies to all bookings.": "所有预订均收取 5 澳元取消费。",
 
     /* ---------- booking widget ---------- */
     "Booking progress": "预订进度",
