@@ -215,9 +215,19 @@ async function cancelBooking(id) {
   const booking = readBookings().find((item) => item.id === id);
   if (!booking) return;
   const label = `${booking.name} · ${displayTime(booking.time)}`;
-  if (!window.confirm(`${t("Cancel this booking and free the court?")}\n\n${label}`)) return;
+  const isPaid = booking.status === "Paid";
+  const prompt = isPaid
+    ? t("Refund this customer minus the $5 cancellation fee, and free the court?")
+    : t("Cancel this booking and free the court?");
+  if (!window.confirm(`${prompt}\n\n${label}`)) return;
   try {
-    await window.MWBC_STORE.remove(id);
+    if (isPaid) {
+      const res = await window.MWBC_STORE.refundCancel(id);
+      const refunded = ((res && res.refundedCents) || 0) / 100;
+      window.alert(`${t("Refund complete.")} $${refunded.toFixed(2)}`);
+    } else {
+      await window.MWBC_STORE.remove(id);
+    }
   } catch {
     window.alert(t("Couldn't cancel that booking. Please try again."));
   }
@@ -350,19 +360,13 @@ function renderBookings() {
       <td>${t(booking.source || "Online")}</td>
       <td>$${booking.price || 0}</td>
       <td>${t(booking.status)}</td>
-      <td><button class="table-action" type="button" data-delete="${booking.id}">${t("Remove")}</button></td>
+      <td><button class="table-action" type="button" data-cancel="${booking.id}">${booking.status === "Paid" ? t("Refund −$5") : t("Remove")}</button></td>
     `;
     bookingRows.append(row);
   });
 
-  bookingRows.querySelectorAll("[data-delete]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      try {
-        await window.MWBC_STORE.remove(button.dataset.delete);
-      } catch {
-        window.alert(t("Couldn't cancel that booking. Please try again."));
-      }
-    });
+  bookingRows.querySelectorAll("[data-cancel]").forEach((button) => {
+    button.addEventListener("click", () => cancelBooking(button.dataset.cancel));
   });
 }
 

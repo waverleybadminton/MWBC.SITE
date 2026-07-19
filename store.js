@@ -211,6 +211,17 @@
       await this._refresh();
     },
 
+    // Refund the customer (payment minus the $5 fee) and free the court. Staff only.
+    async refundCancel(groupId) {
+      const { data, error } = await sb().functions.invoke("refund-booking", {
+        body: { group_id: groupId }
+      });
+      if (error) throw error;
+      if (!data || !data.ok) throw new Error((data && data.error) || "refund_failed");
+      await this._refresh();
+      return data;
+    },
+
     async clearAll() {
       const { error } = await sb().from("bookings").delete().gte("start_min", 0);
       if (error) throw error;
