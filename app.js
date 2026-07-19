@@ -1,6 +1,5 @@
 (() => {
 const courts = Array.from({ length: 14 }, (_, index) => `Court ${index + 1}`);
-const bookingKey = "mwbcBookings";
 const i18n = window.MWBC_I18N;
 const t = (key, variables) => i18n?.t(key, variables) || key;
 const isChinese = () => i18n?.isChinese() || false;
@@ -42,15 +41,8 @@ function isoToday() {
 }
 
 function readBookings() {
-  try {
-    return JSON.parse(localStorage.getItem(bookingKey)) || [];
-  } catch {
-    return [];
-  }
-}
-
-function writeBookings(bookings) {
-  localStorage.setItem(bookingKey, JSON.stringify(bookings));
+  // Shared Supabase-backed store (falls back to empty until it hydrates).
+  return window.MWBC_STORE ? window.MWBC_STORE.all() : [];
 }
 
 function parseSlotTime(time) {
@@ -429,7 +421,7 @@ function bindFilters() {
 }
 
 function bindBookingForm() {
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!selectedSlot) {
       formNote.textContent = t("Choose an available time to continue.");
@@ -441,33 +433,69 @@ function bindBookingForm() {
       return;
     }
     if (!form.reportValidity()) return;
+    if (!window.MWBC_STORE) {
+      formNote.textContent = t("Bookings are offline right now. Please try again in a moment.");
+      return;
+    }
 
-    const booking = {
-      id: `MWBC-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      name: document.querySelector("#customer-name").value.trim(),
-      email: document.querySelector("#customer-email").value.trim(),
-      phone: document.querySelector("#customer-phone").value.trim(),
-      status: "Paid",
-      source: "Online",
-      cancellationHours: cancellationHours(selectedSlot.date, selectedSlot.courtCount),
-      createdAt: new Date().toISOString(),
-      ...selectedSlot
-    };
+    const slot = selectedSlot;
+    const name = document.querySelector("#customer-name").value.trim();
+    const email = document.querySelector("#customer-email").value.trim();
+    const phone = document.querySelector("#customer-phone").value.trim();
+    const perCourtCents = Math.round(computePrice(slot.date, slot.time, slot.duration, 1) * 100);
 
-    writeBookings([booking, ...readBookings()]);
-    window.dispatchEvent(new CustomEvent("mwbc-bookings-updated"));
-    window.refreshAdminSchedule?.();
-    populateConfirmation(booking);
-    formNote.textContent = "";
-    updateProgress(3);
-    form.reset();
-    dateInput.value = isoToday();
-    syncVisibleMonthToDate();
-    selectedSlot = null;
-    updateSummary();
-    renderCalendar();
-    renderSlots();
-    window.showTab?.("booking-confirmation");
+    submitButton.disabled = true;
+    formNote.textContent = t("Securing your court…");
+
+    try {
+      const groupId = await window.MWBC_STORE.createPublic({
+        date: slot.date,
+        time: slot.time,
+        duration: slot.duration,
+        courts: slot.courts,
+        name,
+        email,
+        phone,
+        pricePerCourtCents: perCourtCents
+      });
+
+      const booking = {
+        id: `MWBC-${String(groupId).slice(0, 6).toUpperCase()}`,
+        name,
+        email,
+        phone,
+        status: "Unpaid",
+        source: "Online",
+        cancellationHours: cancellationHours(slot.date, slot.courtCount),
+        createdAt: new Date().toISOString(),
+        ...slot
+      };
+
+      populateConfirmation(booking);
+      formNote.textContent = "";
+      updateProgress(3);
+      form.reset();
+      dateInput.value = isoToday();
+      syncVisibleMonthToDate();
+      selectedSlot = null;
+      updateSummary();
+      renderCalendar();
+      renderSlots();
+      window.showTab?.("booking-confirmation");
+    } catch (err) {
+      const message = String((err && (err.message || err.msg)) || "");
+      if (/slot_unavailable/i.test(message)) {
+        formNote.textContent = t("Sorry — that time was just taken. Please choose another slot.");
+        selectedSlot = null;
+        updateSummary();
+        renderCalendar();
+        renderSlots();
+      } else {
+        formNote.textContent = t("Something went wrong creating your booking. Please try again.");
+      }
+    } finally {
+      updateSubmitState();
+    }
   });
 }
 
@@ -495,6 +523,13 @@ window.addEventListener("mwbc-language-changed", () => {
   renderSlots();
   updateSummary();
   if (lastConfirmedBooking) populateConfirmation(lastConfirmedBooking);
+});
+
+// Re-render availability whenever the shared store hydrates or changes.
+window.addEventListener("mwbc-bookings-updated", () => {
+  renderCalendar();
+  renderSlots();
+  updateSummary();
 });
 
 renderCalendar();

@@ -1,0 +1,231 @@
+/* ==========================================================================
+   MWBC booking store — the single shared source of truth for bookings.
+   --------------------------------------------------------------------------
+   Bookings live in Supabase (shared across every device, with the database
+   itself preventing double-bookings). This module keeps a synchronous
+   in-memory cache so the existing render code in app.js / admin.js can keep
+   calling `all()` without becoming async, and re-renders on change events.
+
+   Two visibility modes:
+     • Public (anon):  cache holds busy time-ranges only — NO customer PII.
+     • Staff (authed): cache holds full booking rows, grouped per booking.
+
+   Events dispatched on window:
+     • "mwbc-bookings-updated" — cache changed, re-render.
+     • "mwbc-auth-changed"     — staff signed in/out (detail.authed).
+   ========================================================================== */
+(function () {
+  const pad = (n) => String(n).padStart(2, "0");
+  const minToTime = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+  const timeToMin = (t) => {
+    const [h, mn] = String(t).split(":").map(Number);
+    return h * 60 + mn;
+  };
+  const courtNum = (c) => Number(String(c).match(/\d+/)?.[0] || 0);
+  const courtName = (n) => `Court ${n}`;
+  const STATUS = { paid: "Paid", unpaid: "Unpaid", hold: "Hold", cancelled: "Cancelled" };
+  const SOURCE = { online: "Online", phone: "Phone" };
+
+  function uuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  }
+
+  const sb = () => window.MWBC_SB;
+  const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }));
+
+  // Turn full DB rows into the booking shape the UI already expects.
+  function groupRows(rows) {
+    const map = new Map();
+    rows.forEach((r) => {
+      let g = map.get(r.group_id);
+      if (!g) {
+        g = {
+          id: r.group_id,
+          name: r.customer_name || "",
+          email: r.email || "",
+          phone: r.phone || "",
+          status: STATUS[r.status] || "Unpaid",
+          source: SOURCE[r.source] || "Online",
+          date: r.booking_date,
+          time: minToTime(r.start_min),
+          duration: r.end_min - r.start_min,
+          courts: [],
+          courtCount: 0,
+          price: 0,
+          notes: r.notes || "",
+          createdAt: r.created_at
+        };
+        map.set(r.group_id, g);
+      }
+      g.courts.push(courtName(r.court));
+      g.price += (r.price_cents || 0) / 100;
+    });
+    const list = [...map.values()];
+    list.forEach((g) => {
+      g.courts.sort((a, b) => courtNum(a) - courtNum(b));
+      g.court = g.courts[0];
+      g.courtCount = g.courts.length;
+    });
+    list.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    return list;
+  }
+
+  // Busy ranges → lightweight pseudo-bookings for availability math (no PII).
+  function pseudoFromAvailability(rows) {
+    return rows.map((r) => ({
+      date: r.booking_date,
+      time: minToTime(r.start_min),
+      duration: r.end_min - r.start_min,
+      court: courtName(r.court),
+      courts: [courtName(r.court)],
+      status: "",
+      source: ""
+    }));
+  }
+
+  const store = {
+    _cache: [],
+    _authed: false,
+    _channel: null,
+    ready: false,
+
+    all() {
+      return this._cache;
+    },
+    isAuthed() {
+      return this._authed;
+    },
+
+    async init() {
+      const client = sb();
+      if (!client) return;
+      try {
+        const {
+          data: { session }
+        } = await client.auth.getSession();
+        this._authed = session ? await this._checkStaff() : false;
+      } catch {
+        this._authed = false;
+      }
+      await this._refresh();
+      this._resubscribe();
+      client.auth.onAuthStateChange(async (_event, session) => {
+        this._authed = session ? await this._checkStaff() : false;
+        await this._refresh();
+        this._resubscribe();
+        emit("mwbc-auth-changed", { authed: this._authed });
+      });
+      this.ready = true;
+    },
+
+    // Is the signed-in user actually on the staff allow-list? (RLS returns
+    // their own row only if so.)
+    async _checkStaff() {
+      const { data, error } = await sb().from("staff").select("user_id").limit(1);
+      return !error && Array.isArray(data) && data.length > 0;
+    },
+
+    async _refresh() {
+      const client = sb();
+      if (!client) return;
+      if (this._authed) {
+        const { data, error } = await client.from("bookings").select("*");
+        this._cache = error ? [] : groupRows(data || []);
+      } else {
+        const { data, error } = await client.rpc("availability", {});
+        this._cache = error ? [] : pseudoFromAvailability(data || []);
+      }
+      emit("mwbc-bookings-updated");
+    },
+
+    _resubscribe() {
+      const client = sb();
+      if (!client) return;
+      if (this._channel) {
+        client.removeChannel(this._channel);
+        this._channel = null;
+      }
+      // Realtime only delivers rows RLS allows — i.e. only for staff.
+      if (this._authed) {
+        this._channel = client
+          .channel("mwbc-bookings-rt")
+          .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () =>
+            this._refresh()
+          )
+          .subscribe();
+      }
+    },
+
+    // Public booking → validated server-side RPC (respects the no-overlap
+    // constraint). Throws { message: "slot_unavailable" } if the slot is taken.
+    async createPublic(b) {
+      const start = timeToMin(b.time);
+      const { data, error } = await sb().rpc("request_booking", {
+        p_date: b.date,
+        p_start_min: start,
+        p_end_min: start + Number(b.duration),
+        p_courts: b.courts.map(courtNum),
+        p_name: b.name || "",
+        p_email: b.email || "",
+        p_phone: b.phone || "",
+        p_price_cents_per_court: Math.round(b.pricePerCourtCents || 0),
+        p_source: "online"
+      });
+      if (error) throw error;
+      await this._refresh();
+      return data; // group_id
+    },
+
+    // Staff booking → direct insert (authenticated), with a chosen status.
+    async createManual(b) {
+      const start = timeToMin(b.time);
+      const end = start + Number(b.duration);
+      const gid = uuid();
+      const rows = b.courts.map((c) => ({
+        group_id: gid,
+        court: courtNum(c),
+        booking_date: b.date,
+        start_min: start,
+        end_min: end,
+        customer_name: b.name || null,
+        email: b.email || null,
+        phone: b.phone || null,
+        status: (b.status || "Unpaid").toLowerCase(),
+        source: "phone",
+        price_cents: Math.round(b.pricePerCourtCents || 0),
+        notes: b.notes || null
+      }));
+      const { error } = await sb().from("bookings").insert(rows);
+      if (error) throw error;
+      await this._refresh();
+      return gid;
+    },
+
+    async remove(groupId) {
+      const { error } = await sb().from("bookings").delete().eq("group_id", groupId);
+      if (error) throw error;
+      await this._refresh();
+    },
+
+    async clearAll() {
+      const { error } = await sb().from("bookings").delete().gte("start_min", 0);
+      if (error) throw error;
+      await this._refresh();
+    },
+
+    async signIn(email, password) {
+      const { error } = await sb().auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    },
+    async signOut() {
+      await sb().auth.signOut();
+    }
+  };
+
+  window.MWBC_STORE = store;
+  store.init().catch((e) => console.error("[MWBC] store init failed", e));
+})();

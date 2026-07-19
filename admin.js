@@ -1,5 +1,4 @@
 (() => {
-const bookingKey = "mwbcBookings";
 const courts = Array.from({ length: 14 }, (_, index) => `Court ${index + 1}`);
 const closeHour = 23;
 const i18n = window.MWBC_I18N;
@@ -30,14 +29,10 @@ const loginForm = document.querySelector("#admin-login-form");
 const loginNote = document.querySelector("#admin-login-note");
 const adminDashboard = document.querySelector("#admin-dashboard");
 const logoutButton = document.querySelector("#admin-logout");
-const adminSessionKey = "mwbcAdminAuthenticated";
 const newBookingButton = document.querySelector("#new-booking-btn");
 const manualModal = document.querySelector("#manual-modal");
 const closeManualModalButton = document.querySelector("#close-manual-modal");
 const manualModalBackdrop = document.querySelector("#manual-modal-backdrop");
-
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "MWBC2026";
 
 function isoToday() {
   const now = new Date();
@@ -52,15 +47,7 @@ function addDays(dateValue, days) {
 }
 
 function readBookings() {
-  try {
-    return JSON.parse(localStorage.getItem(bookingKey)) || [];
-  } catch {
-    return [];
-  }
-}
-
-function writeBookings(bookings) {
-  localStorage.setItem(bookingKey, JSON.stringify(bookings));
+  return window.MWBC_STORE ? window.MWBC_STORE.all() : [];
 }
 
 function displayDate(value, options = {}) {
@@ -224,13 +211,16 @@ function openBlankModal() {
   openModal();
 }
 
-function cancelBooking(id) {
+async function cancelBooking(id) {
   const booking = readBookings().find((item) => item.id === id);
   if (!booking) return;
   const label = `${booking.name} · ${displayTime(booking.time)}`;
   if (!window.confirm(`${t("Cancel this booking and free the court?")}\n\n${label}`)) return;
-  writeBookings(readBookings().filter((item) => item.id !== id));
-  renderAll();
+  try {
+    await window.MWBC_STORE.remove(id);
+  } catch {
+    window.alert(t("Couldn't cancel that booking. Please try again."));
+  }
 }
 
 /* ---------- rendering ---------- */
@@ -329,7 +319,6 @@ function renderSchedule() {
 }
 
 function renderBookings() {
-  const allBookings = readBookings();
   const bookings = selectedDateBookings();
   const totalMinutes = courts.length * (closeHour - openingHour(adminDate.value)) * 60;
   const bookedMinutes = bookings.reduce((sum, booking) => {
@@ -367,9 +356,12 @@ function renderBookings() {
   });
 
   bookingRows.querySelectorAll("[data-delete]").forEach((button) => {
-    button.addEventListener("click", () => {
-      writeBookings(allBookings.filter((booking) => booking.id !== button.dataset.delete));
-      renderAll();
+    button.addEventListener("click", async () => {
+      try {
+        await window.MWBC_STORE.remove(button.dataset.delete);
+      } catch {
+        window.alert(t("Couldn't cancel that booking. Please try again."));
+      }
     });
   });
 }
@@ -404,7 +396,7 @@ function allocateManualCourts(date, time, duration, firstCourt, count) {
 }
 
 function bindManualBooking() {
-  manualForm.addEventListener("submit", (event) => {
+  manualForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!manualForm.reportValidity()) return;
     const courtCount = Number(manualCourtCount.value || 1);
@@ -417,30 +409,36 @@ function bindManualBooking() {
       return;
     }
 
-    const booking = {
-      id: `MWBC-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      name: document.querySelector("#manual-name").value.trim() || t("Reserved"),
-      phone: document.querySelector("#manual-phone").value.trim(),
-      email: document.querySelector("#manual-email").value.trim(),
-      court: assignedCourts[0],
-      courts: assignedCourts,
-      courtCount,
-      date: manualDate.value,
-      time: manualTime.value,
-      duration: manualDuration.value,
-      status: manualStatus.value,
-      source: "Phone",
-      notes: document.querySelector("#manual-notes").value.trim(),
-      price: computePrice(manualDate.value, manualTime.value, manualDuration.value) * courtCount,
-      createdAt: new Date().toISOString()
-    };
+    const submitBtn = manualForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    manualNote.textContent = t("Saving…");
 
-    writeBookings([booking, ...readBookings()]);
-    manualForm.reset();
-    manualBookingTitle.textContent = t("New booking");
-    manualDate.value = adminDate.value;
-    closeManualModal();
-    renderAll();
+    try {
+      await window.MWBC_STORE.createManual({
+        name: document.querySelector("#manual-name").value.trim() || t("Reserved"),
+        phone: document.querySelector("#manual-phone").value.trim(),
+        email: document.querySelector("#manual-email").value.trim(),
+        courts: assignedCourts,
+        date: manualDate.value,
+        time: manualTime.value,
+        duration: manualDuration.value,
+        status: manualStatus.value,
+        notes: document.querySelector("#manual-notes").value.trim(),
+        pricePerCourtCents: Math.round(computePrice(manualDate.value, manualTime.value, manualDuration.value) * 100)
+      });
+      manualForm.reset();
+      manualBookingTitle.textContent = t("New booking");
+      manualDate.value = adminDate.value;
+      manualNote.textContent = "";
+      closeManualModal();
+    } catch (err) {
+      const message = String((err && (err.message || err.msg)) || "");
+      manualNote.textContent = /exclusion|overlap|23P01|slot_unavailable/i.test(message)
+        ? (isChinese() ? "该场地在此时段已被预订，请重新选择。" : "That court is already booked at this time. Pick another slot.")
+        : (isChinese() ? "保存预订失败，请重试。" : "Couldn't save the booking. Please try again.");
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
   });
 }
 
@@ -452,10 +450,10 @@ function renderAll() {
   renderBookings();
 }
 
-/* ---------- auth ---------- */
+/* ---------- auth (Supabase) ---------- */
 
 function isAdminAuthenticated() {
-  return sessionStorage.getItem(adminSessionKey) === "true";
+  return !!(window.MWBC_STORE && window.MWBC_STORE.isAuthed());
 }
 
 function setAdminState(authenticated) {
@@ -478,24 +476,32 @@ manualDate.value = adminDate.value;
 bindManualBooking();
 setAdminState(isAdminAuthenticated());
 
-loginForm.addEventListener("submit", (event) => {
+loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!loginForm.reportValidity()) return;
-  const username = document.querySelector("#admin-username").value.trim();
+  const email = document.querySelector("#admin-username").value.trim();
   const password = document.querySelector("#admin-password").value;
-  if (username !== ADMIN_USER || password !== ADMIN_PASS) {
-    loginNote.textContent = t("Username or password is incorrect.");
-    return;
+  const submitBtn = loginForm.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+  loginNote.textContent = t("Signing in…");
+  try {
+    await window.MWBC_STORE.signIn(email, password);
+    loginForm.reset();
+    // The dashboard is shown by the mwbc-auth-changed handler below.
+  } catch {
+    loginNote.textContent = t("Email or password is incorrect.");
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
   }
-  sessionStorage.setItem(adminSessionKey, "true");
-  loginForm.reset();
-  setAdminState(true);
 });
 
-logoutButton.addEventListener("click", () => {
-  sessionStorage.removeItem(adminSessionKey);
-  setAdminState(false);
+logoutButton.addEventListener("click", async () => {
+  await window.MWBC_STORE.signOut();
   document.querySelector("#admin-username").focus();
+});
+
+window.addEventListener("mwbc-auth-changed", (event) => {
+  setAdminState(!!event.detail?.authed);
 });
 
 document.querySelector("#prev-day").addEventListener("click", () => {
@@ -529,7 +535,9 @@ clearButton.addEventListener("click", () => {
   renderAll();
 });
 
-window.addEventListener("mwbc-bookings-updated", renderAll);
+window.addEventListener("mwbc-bookings-updated", () => {
+  if (isAdminAuthenticated()) renderAll();
+});
 window.addEventListener("mwbc-language-changed", () => {
   if (isAdminAuthenticated()) renderAll();
 });
