@@ -442,57 +442,42 @@ function bindBookingForm() {
     const name = document.querySelector("#customer-name").value.trim();
     const email = document.querySelector("#customer-email").value.trim();
     const phone = document.querySelector("#customer-phone").value.trim();
-    const perCourtCents = Math.round(computePrice(slot.date, slot.time, slot.duration, 1) * 100);
 
     submitButton.disabled = true;
-    formNote.textContent = t("Securing your court…");
+    formNote.textContent = t("Taking you to secure checkout…");
 
     try {
-      const groupId = await window.MWBC_STORE.createPublic({
-        date: slot.date,
-        time: slot.time,
-        duration: slot.duration,
-        courts: slot.courts,
-        name,
-        email,
-        phone,
-        pricePerCourtCents: perCourtCents
+      // The server recomputes the price, holds the courts (respecting the
+      // no-overlap constraint) and opens a Stripe Checkout session.
+      const { data, error } = await window.MWBC_SB.functions.invoke("create-checkout", {
+        body: {
+          date: slot.date,
+          time: slot.time,
+          duration: Number(slot.duration),
+          courts: slot.courts,
+          name,
+          email,
+          phone
+        }
       });
+      if (error) throw error;
 
-      const booking = {
-        id: `MWBC-${String(groupId).slice(0, 6).toUpperCase()}`,
-        name,
-        email,
-        phone,
-        status: "Unpaid",
-        source: "Online",
-        cancellationHours: cancellationHours(slot.date, slot.courtCount),
-        createdAt: new Date().toISOString(),
-        ...slot
-      };
+      if (data && data.ok && data.url) {
+        window.location.href = data.url; // hand off to Stripe's hosted checkout
+        return;
+      }
 
-      populateConfirmation(booking);
-      formNote.textContent = "";
-      updateProgress(3);
-      form.reset();
-      dateInput.value = isoToday();
-      syncVisibleMonthToDate();
-      selectedSlot = null;
-      updateSummary();
-      renderCalendar();
-      renderSlots();
-      window.showTab?.("booking-confirmation");
-    } catch (err) {
-      const message = String((err && (err.message || err.msg)) || "");
-      if (/slot_unavailable/i.test(message)) {
+      if (data && data.error === "slot_unavailable") {
         formNote.textContent = t("Sorry — that time was just taken. Please choose another slot.");
         selectedSlot = null;
         updateSummary();
         renderCalendar();
         renderSlots();
       } else {
-        formNote.textContent = t("Something went wrong creating your booking. Please try again.");
+        formNote.textContent = t("Something went wrong starting checkout. Please try again.");
       }
+    } catch (err) {
+      formNote.textContent = t("Something went wrong starting checkout. Please try again.");
     } finally {
       updateSubmitState();
     }
@@ -558,4 +543,57 @@ window.MWBC_AVAILABILITY = {
     return null;
   }
 };
+
+/* ---------- return from Stripe Checkout ---------- */
+
+const confirmationIntro = document.querySelector(".confirmation-intro");
+
+async function showConfirmationForSession(sessionId, attempt) {
+  try {
+    const { data } = await window.MWBC_SB.functions.invoke("confirm-checkout", {
+      body: { session_id: sessionId }
+    });
+    if (!data || !data.ok) {
+      if (attempt < 5) window.setTimeout(() => showConfirmationForSession(sessionId, attempt + 1), 1500);
+      return;
+    }
+    const courtCount = data.courts.length;
+    populateConfirmation({
+      id: `MWBC-${String(data.group_id).slice(0, 6).toUpperCase()}`,
+      email: data.email,
+      date: data.date,
+      time: data.time,
+      duration: data.duration,
+      courtCount,
+      price: data.totalCents / 100,
+      cancellationHours: cancellationHours(data.date, courtCount)
+    });
+    if (data.status === "paid") {
+      if (confirmationIntro) confirmationIntro.textContent = t("Payment received — your court is confirmed. Details below.");
+    } else {
+      if (confirmationIntro) confirmationIntro.textContent = t("Confirming your payment…");
+      if (attempt < 5) window.setTimeout(() => showConfirmationForSession(sessionId, attempt + 1), 1500);
+    }
+  } catch {
+    if (attempt < 5) window.setTimeout(() => showConfirmationForSession(sessionId, attempt + 1), 1500);
+  }
+}
+
+(function handleCheckoutReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get("paid");
+  const cancelled = params.get("cancelled");
+
+  if (cancelled) {
+    history.replaceState(null, "", `${window.location.pathname}#court-hire`);
+    formNote.textContent = t("Payment was cancelled — your court wasn't booked. You can try again.");
+    return;
+  }
+  if (!sessionId) return;
+
+  history.replaceState(null, "", `${window.location.pathname}#booking-confirmation`);
+  window.showTab?.("booking-confirmation");
+  if (confirmationIntro) confirmationIntro.textContent = t("Confirming your payment…");
+  showConfirmationForSession(sessionId, 0);
+})();
 })();
