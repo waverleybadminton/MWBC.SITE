@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y33">
+    <link rel="stylesheet" href="./styles.css?v=y34">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -762,7 +762,7 @@
               <div>
                 <p class="kicker">Badminton</p>
                 <h2 id="schedule-title">Court board</h2>
-                <p class="schedule-help">Click any empty slot to add a booking. Click a booking to cancel it.</p>
+                <p class="schedule-help">Click any empty slot to add a booking. Click a booking to edit, cancel or refund it.</p>
               </div>
               <div class="date-controls" aria-label="Schedule date controls">
                 <button class="date-arrow" id="prev-day" type="button" aria-label="Previous day">‹</button>
@@ -778,8 +778,8 @@
               </div>
               <div class="schedule-legend" aria-label="Booking colour legend">
                 <span><i class="legend-online"></i>Online</span>
-                <span><i class="legend-phone"></i>Phone/manual</span>
-                <span><i class="legend-unpaid"></i>Unpaid/hold</span>
+                <span><i class="legend-phone"></i>Booked by us</span>
+                <span><i class="legend-unpaid"></i>Unpaid</span>
               </div>
             </div>
             <div class="admin-selection" id="admin-selection">
@@ -867,6 +867,17 @@
                     <option value="Hold">Hold</option>
                   </select>
                 </label>
+                <label id="manual-repeat-field">
+                  Repeat weekly
+                  <select id="manual-repeat">
+                    <option value="1" selected>Just this date</option>
+                    <option value="2">Weekly for 2 weeks</option>
+                    <option value="4">Weekly for 4 weeks</option>
+                    <option value="8">Weekly for 8 weeks</option>
+                    <option value="12">Weekly for 12 weeks</option>
+                  </select>
+                  <small class="field-note">Repeats the same time and court on the following weeks.</small>
+                </label>
                 <label class="manual-notes">
                   Notes
                   <input id="manual-notes" type="text" placeholder="e.g. regular, group, deposit">
@@ -874,6 +885,7 @@
                 </div>
                 <div class="manual-actions">
                   <button class="btn btn-book" type="submit">Add Booking</button>
+                  <button class="btn btn-ghost-dark" type="button" id="manual-delete" hidden>Cancel this booking</button>
                   <p id="manual-note" class="form-note" role="status"></p>
                 </div>
               </form>
@@ -942,12 +954,12 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y33"></script>
-    <script src="./mwbc-scheduler.js?v=y33"></script>
-    <script src="./supabase-client.js?v=y33"></script>
-    <script src="./store.js?v=y33"></script>
-    <script src="./main.js?v=y33"></script>
-    <script src="./app.js?v=y33"></script>
-    <script src="./admin.js?v=y33"></script>
+    <script src="./i18n.js?v=y34"></script>
+    <script src="./mwbc-scheduler.js?v=y34"></script>
+    <script src="./supabase-client.js?v=y34"></script>
+    <script src="./store.js?v=y34"></script>
+    <script src="./main.js?v=y34"></script>
+    <script src="./app.js?v=y34"></script>
+    <script src="./admin.js?v=y34"></script>
   </body>
 </html>

@@ -57,6 +57,7 @@
           courtCount: 0,
           price: 0,
           notes: r.notes || "",
+          stripeSessionId: r.stripe_session_id || null,
           createdAt: r.created_at
         };
         map.set(r.group_id, g);
@@ -203,6 +204,28 @@
       if (error) throw error;
       await this._refresh();
       return gid;
+    },
+
+    // Edit a booking group atomically (staff). Throws on overlap.
+    async updateBooking(groupId, b) {
+      const start = timeToMin(b.time);
+      const { error } = await sb().rpc("replace_booking", {
+        p_group: groupId,
+        p_courts: b.courts.map(courtNum),
+        p_date: b.date,
+        p_start_min: start,
+        p_end_min: start + Number(b.duration),
+        p_name: b.name || "",
+        p_email: b.email || "",
+        p_phone: b.phone || "",
+        p_status: (b.status || "Unpaid").toLowerCase(),
+        p_source: (b.source || "phone").toLowerCase(),
+        p_price_cents: Math.round(b.pricePerCourtCents || 0),
+        p_notes: b.notes || "",
+        p_session_id: b.stripeSessionId || ""
+      });
+      if (error) throw error;
+      await this._refresh();
     },
 
     async remove(groupId) {

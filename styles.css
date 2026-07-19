@@ -1352,7 +1352,8 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .date-controls { display: flex; align-items: center; gap: 0.5rem; }
 .date-controls input { min-height: 44px; width: auto; }
 
-.day-tabs { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
+.day-tabs { display: flex; flex-wrap: nowrap; gap: 0.45rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.day-tabs button { flex: 0 0 auto; white-space: nowrap; }
 
 .day-tabs button {
   border: 1px solid var(--line);
@@ -1378,9 +1379,9 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .schedule-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
 .schedule-legend i { width: 11px; height: 11px; border-radius: 3px; }
 
-.legend-online { background: var(--navy-700); }
+.legend-online { background: var(--blue); }
 .legend-phone { background: var(--green); }
-.legend-unpaid { background: #d9a441; }
+.legend-unpaid { background: #f2b134; }
 
 .admin-selection {
   display: flex;
@@ -1400,56 +1401,105 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .admin-selection small { color: var(--ink-soft); font-size: 0.82rem; }
 .admin-selection-actions { display: flex; gap: 0.5rem; }
 
-.schedule-scroll { overflow-x: auto; padding-bottom: 0.5rem; }
+/* Contained, scrollable board so it fits the page; sticky court headers (top)
+   and time labels (left) stay visible while scrolling. */
+.schedule-scroll {
+  overflow: auto;
+  max-height: 72vh;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--line-soft);
+  -webkit-overflow-scrolling: touch;
+}
 
 .court-schedule {
   display: grid;
-  grid-template-columns: 92px repeat(var(--time-count, 28), minmax(44px, 1fr));
-  grid-auto-rows: 44px;
-  gap: 3px;
-  min-width: 900px;
+  grid-template-columns: 76px repeat(var(--court-count, 14), minmax(74px, 1fr));
+  grid-auto-rows: 56px;
+  gap: 2px;
+  min-width: 1140px;
+  padding: 2px;
 }
 
-.schedule-corner, .time-header, .court-label { display: flex; align-items: center; font-size: 0.72rem; font-weight: 700; color: var(--ink-soft); }
-.time-header { text-transform: lowercase; }
-.court-label { background: var(--paper); border-radius: var(--radius-s); padding: 0 0.6rem; color: var(--navy-900); font-size: 0.8rem; }
+.schedule-corner {
+  position: sticky; top: 0; left: 0; z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--navy-900); color: #fff;
+  font-size: 0.72rem; font-weight: 700; border-radius: 5px;
+}
+
+.court-header {
+  position: sticky; top: 0; z-index: 4;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--navy-900); color: #fff;
+  font-size: 1.05rem; font-weight: 800; border-radius: 5px;
+}
+
+.time-label {
+  position: sticky; left: 0; z-index: 3;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 8px;
+  background: var(--paper); color: var(--navy-900);
+  font-size: 0.82rem; font-weight: 600;
+}
+.time-label.hour { font-weight: 800; color: var(--ink); }
 
 .schedule-cell {
-  border: 1px solid var(--line-soft);
-  border-radius: 5px;
-  background: var(--paper);
+  border: 0;
+  background: #fff;
   cursor: pointer;
   padding: 0;
-  transition: background-color 100ms ease, border-color 100ms ease;
+  transition: background-color 100ms ease;
 }
-
-.schedule-cell:hover:not([disabled]) { background: rgba(13, 78, 160, 0.16); border-color: rgba(13, 78, 160, 0.45); }
-.schedule-cell.selected { background: var(--blue); border-color: var(--blue-deep); }
-.schedule-cell[disabled] { cursor: default; background: transparent; }
+.schedule-cell.hour-line { box-shadow: inset 0 2px 0 -1px var(--line); }
+.schedule-cell:hover:not([disabled]) { background: rgba(13, 78, 160, 0.16); }
+.schedule-cell[disabled] { cursor: default; background: #fff; }
 
 .booking-block {
   border: 0;
   border-radius: 5px;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 600;
+  margin: 1px;
+  padding: 5px 7px;
   font-family: inherit;
   color: #fff;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  overflow: hidden;
   text-align: left;
   cursor: pointer;
+  line-height: 1.15;
   transition: filter 120ms ease, box-shadow 120ms ease;
 }
+.booking-block:hover { filter: brightness(1.06); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6); }
 
-.booking-block:hover { filter: brightness(1.08); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.55); }
+.bb-name { font-weight: 700; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bb-phone { font-size: 0.72rem; opacity: 0.92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bb-tag {
+  align-self: flex-start;
+  margin-top: 1px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.24);
+}
 
-.booking-online { background: var(--navy-700); }
-.booking-phone { background: var(--green-deep); }
-.booking-unpaid { background: #d9a441; color: var(--ink); }
+/* Colour = who booked; amber bar/tag = unpaid. */
+.booking-online { background: var(--blue); }
+.booking-phone { background: var(--green); }
+.booking-block.is-unpaid { box-shadow: inset 5px 0 0 #f2b134; }
+.booking-block.is-unpaid .bb-tag { background: #f2b134; color: var(--navy-950); }
+.booking-block.is-unpaid:hover { box-shadow: inset 5px 0 0 #f2b134, inset 0 0 0 2px rgba(255, 255, 255, 0.6); }
+
+/* Booking-table pills + actions */
+.src-pill, .status-pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+.src-online { background: rgba(13, 78, 160, 0.14); color: var(--blue-deep); }
+.src-phone { background: rgba(31, 128, 67, 0.16); color: var(--green-deep); }
+.pill-paid { background: rgba(31, 128, 67, 0.16); color: var(--green-deep); }
+.pill-unpaid { background: rgba(242, 177, 52, 0.24); color: #7a5200; }
+.table-actions { display: flex; gap: 0.4rem; white-space: nowrap; }
+.table-action.danger { color: #c23b3b; }
 
 .admin-layout { display: grid; gap: 1.5rem; }
 
