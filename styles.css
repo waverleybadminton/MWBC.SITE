@@ -247,6 +247,11 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
 .section.dark { background: var(--navy-900); color: #fff; }
 .section.dark p { color: var(--white-soft); }
 
+/* Full-width call-to-action band (solid brand colour, no photo). */
+.cta-band { text-align: center; }
+.cta-band h2 { margin-bottom: 0.8rem; }
+.cta-band p { max-width: 42rem; margin-left: auto; margin-right: auto; margin-bottom: 1.6rem; }
+
 .section-head { max-width: 640px; margin-bottom: clamp(1.75rem, 4vw, 3rem); }
 .section-head h2 { margin-bottom: 0; }
 
