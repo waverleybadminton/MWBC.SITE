@@ -263,6 +263,33 @@
       return data; // school_bookings id
     },
 
+    async updateSchoolBooking(schoolId, b) {
+      const sessions = (b.sessions || []).map((s) => {
+        const start = timeToMin(s.time);
+        return {
+          date: s.date,
+          start_min: start,
+          end_min: start + Number(s.duration),
+          courts: s.courts.map(courtNum),
+          price_cents: Math.round(s.perCourtCents || 0)
+        };
+      });
+      const { error } = await sb().rpc("replace_school_booking", {
+        p_school_id: schoolId,
+        p_school_name: b.schoolName,
+        p_contact_name: b.contactName || "",
+        p_contact_email: b.email || "",
+        p_contact_phone: b.phone || "",
+        p_notes: b.notes || "",
+        p_quote_cents: Math.round(b.quoteCents || 0),
+        p_items: b.items || [],
+        p_sessions: sessions
+      });
+      if (error) throw error;
+      await this._refresh();
+      return schoolId;
+    },
+
     async listSchoolBookings() {
       const { data, error } = await sb().from("school_bookings").select("*").order("created_at", { ascending: false });
       return error ? [] : (data || []);

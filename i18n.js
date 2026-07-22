@@ -378,6 +378,8 @@
     "+ School booking": "+ 学校预订",
     "School / group booking": "学校／团体预订",
     "New school booking": "新增学校预订",
+    "Edit school booking": "编辑学校预订",
+    "Update booking": "更新预订",
     "School name": "学校名称",
     "Contact name": "联系人姓名",
     "Contact email": "联系邮箱",

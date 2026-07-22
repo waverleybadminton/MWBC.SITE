@@ -218,7 +218,7 @@ function resetModalFields() {
 // Click an existing booking → open the modal pre-filled to edit it.
 function openEditModal(booking) {
   if (booking.source === "School") {
-    window.alert(t("School bookings are managed in the School bookings list below."));
+    if (booking.schoolId) openSchoolEditModal(booking.schoolId);
     return;
   }
   resetModalFields();
@@ -596,6 +596,12 @@ const emailModal = document.querySelector("#email-modal");
 const emailBody = document.querySelector("#email-body");
 const emailGmail = document.querySelector("#email-gmail");
 let schoolHeaders = [];
+let editingSchoolId = null;
+
+// When editing, the school's own bookings shouldn't count as "busy".
+function schoolPool() {
+  return editingSchoolId ? readBookings().filter((b) => b.schoolId !== editingSchoolId) : readBookings();
+}
 
 // School court-hire rates (per hour, per court): off-peak $24, peak (5pm+) $34.
 const SCHOOL_RATE_OFFPEAK = 24;
@@ -613,7 +619,7 @@ function timeOptionsHTML(selected) {
 }
 function freeCourtCount(date, time, duration) {
   if (!window.MWBC_SCHEDULER) return courts.length;
-  return window.MWBC_SCHEDULER.allocate(readBookings(), date, time, duration, courts.length).length;
+  return window.MWBC_SCHEDULER.allocate(schoolPool(), date, time, duration, courts.length).length;
 }
 
 function addSessionRow(date) {
@@ -699,15 +705,62 @@ function refreshSchoolCalc() {
 }
 
 function openSchoolModal() {
+  editingSchoolId = null;
   schoolForm.reset();
   schoolQuote.dataset.touched = "";
   sessionRows.innerHTML = "";
   itemRows.innerHTML = "";
   schoolNote.textContent = "";
+  document.querySelector("#school-booking-title").textContent = t("New school booking");
+  schoolForm.querySelector('button[type="submit"]').textContent = t("Create booking");
   addSessionRow(adminDate.value);
   schoolModal.hidden = false;
   document.body.classList.add("modal-open");
   window.setTimeout(() => document.querySelector("#school-name").focus(), 0);
+}
+
+// Edit an existing school booking: pre-fill the modal with its sessions + items.
+async function openSchoolEditModal(id) {
+  if (!schoolHeaders.find((x) => x.id === id)) schoolHeaders = await window.MWBC_STORE.listSchoolBookings();
+  const h = schoolHeaders.find((x) => x.id === id);
+  if (!h) return;
+  openSchoolModal();
+  editingSchoolId = id;
+  sessionRows.innerHTML = "";
+  itemRows.innerHTML = "";
+  document.querySelector("#school-name").value = h.school_name;
+  document.querySelector("#school-contact").value = h.contact_name || "";
+  document.querySelector("#school-email").value = h.contact_email || "";
+  document.querySelector("#school-phone").value = h.contact_phone || "";
+  document.querySelector("#school-notes").value = h.notes || "";
+
+  const sessions = readBookings().filter((b) => b.schoolId === id)
+    .sort((a, b) => a.date.localeCompare(b.date) || minutesFromTime(a.time) - minutesFromTime(b.time));
+  sessions.forEach((b) => {
+    addSessionRow(b.date);
+    const row = sessionRows.lastElementChild;
+    row.querySelector(".s-date").value = b.date;
+    const timeSel = row.querySelector(".s-time");
+    if (!Array.from(timeSel.options).some((o) => o.value === b.time)) {
+      timeSel.insertAdjacentHTML("beforeend", `<option value="${b.time}">${displayTime(b.time)}</option>`);
+    }
+    timeSel.value = b.time;
+    row.querySelector(".s-duration").value = String(b.duration);
+    row.querySelector(".s-courts").value = String(b.courtCount);
+    const hours = b.duration / 60;
+    const rate = b.courtCount && hours > 0 ? (b.price / b.courtCount) / hours : 0;
+    const rateInput = row.querySelector(".s-rate");
+    rateInput.value = Math.round(rate * 100) / 100;
+    rateInput.dataset.touched = "1";
+  });
+  if (!sessions.length) addSessionRow(adminDate.value);
+  (h.items || []).forEach((it) => addItemRow(it.description, Number(it.amountCents || 0) / 100));
+
+  schoolQuote.value = (Number(h.quote_cents || 0) / 100);
+  schoolQuote.dataset.touched = "1";
+  refreshSchoolCalc();
+  document.querySelector("#school-booking-title").textContent = t("Edit school booking");
+  schoolForm.querySelector('button[type="submit"]').textContent = t("Update booking");
 }
 function closeSchoolModal() { schoolModal.hidden = true; document.body.classList.remove("modal-open"); }
 function closeEmailModal() { emailModal.hidden = true; document.body.classList.remove("modal-open"); }
@@ -793,11 +846,13 @@ async function renderSchoolList() {
       <td>${rows.length} · ${escapeHtml(dateSummary)}</td>
       <td>$${(Number(h.quote_cents || 0) / 100).toFixed(2)}</td>
       <td class="table-actions">
+        <button class="table-action" type="button" data-school-edit="${h.id}">${t("Edit")}</button>
         <button class="table-action" type="button" data-school-email="${h.id}">${t("Email")}</button>
         <button class="table-action danger" type="button" data-school-remove="${h.id}">${t("Remove")}</button>
       </td>`;
     schoolBookingsBody.append(tr);
   });
+  schoolBookingsBody.querySelectorAll("[data-school-edit]").forEach((b) => b.addEventListener("click", () => openSchoolEditModal(b.dataset.schoolEdit)));
   schoolBookingsBody.querySelectorAll("[data-school-email]").forEach((b) => b.addEventListener("click", () => emailForSchool(b.dataset.schoolEmail)));
   schoolBookingsBody.querySelectorAll("[data-school-remove]").forEach((b) => b.addEventListener("click", () => removeSchool(b.dataset.schoolRemove)));
 }
@@ -828,7 +883,7 @@ function bindSchoolBookings() {
     const allocated = [];
     for (const s of sessions) {
       const got = window.MWBC_SCHEDULER
-        ? window.MWBC_SCHEDULER.allocate(readBookings(), s.date, s.time, s.duration, s.courtsWanted)
+        ? window.MWBC_SCHEDULER.allocate(schoolPool(), s.date, s.time, s.duration, s.courtsWanted)
         : [];
       if (got.length < s.courtsWanted) {
         schoolNote.textContent = isChinese()
@@ -853,7 +908,11 @@ function bindSchoolBookings() {
       sessions: allocated
     };
     try {
-      await window.MWBC_STORE.createSchoolBooking(payload);
+      if (editingSchoolId) {
+        await window.MWBC_STORE.updateSchoolBooking(editingSchoolId, payload);
+      } else {
+        await window.MWBC_STORE.createSchoolBooking(payload);
+      }
       closeSchoolModal();
       await renderSchoolList();
       showSchoolEmail(payload, allocated);
