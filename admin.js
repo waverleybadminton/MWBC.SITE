@@ -591,10 +591,18 @@ const sessionRows = document.querySelector("#session-rows");
 const schoolQuote = document.querySelector("#school-quote");
 const schoolNote = document.querySelector("#school-note");
 const schoolBookingsBody = document.querySelector("#school-bookings");
+const itemRows = document.querySelector("#item-rows");
 const emailModal = document.querySelector("#email-modal");
 const emailBody = document.querySelector("#email-body");
 const emailGmail = document.querySelector("#email-gmail");
 let schoolHeaders = [];
+
+// School court-hire rates (per hour, per court): off-peak $24, peak (5pm+) $34.
+const SCHOOL_RATE_OFFPEAK = 24;
+const SCHOOL_RATE_PEAK = 34;
+function schoolRate(time) {
+  return minutesFromTime(time) >= 17 * 60 ? SCHOOL_RATE_PEAK : SCHOOL_RATE_OFFPEAK;
+}
 
 function durationOptionsHTML(selected) {
   return [60, 90, 120, 150, 180, 210, 240, 270, 300]
@@ -616,11 +624,19 @@ function addSessionRow(date) {
     <label>${t("Start time")}<select class="s-time">${timeOptionsHTML("09:00")}</select></label>
     <label>${t("Duration")}<select class="s-duration">${durationOptionsHTML(120)}</select></label>
     <label>${t("Courts")}<input type="number" class="s-courts" min="1" max="14" value="14"></label>
+    <label>${t("$/court/hr")}<input type="number" class="s-rate" min="0" step="1" value="${SCHOOL_RATE_OFFPEAK}"></label>
     <span class="s-avail"></span>
     <button type="button" class="s-remove" aria-label="${t("Remove")}">&times;</button>`;
   const dateInput = row.querySelector(".s-date");
   dateInput.value = date || adminDate.value;
   dateInput.min = isoToday();
+  const rateInput = row.querySelector(".s-rate");
+  rateInput.value = schoolRate(row.querySelector(".s-time").value);
+  // Re-default the rate when the start time changes (unless staff typed one in).
+  row.querySelector(".s-time").addEventListener("change", (e) => {
+    if (rateInput.dataset.touched !== "1") rateInput.value = schoolRate(e.target.value);
+  });
+  rateInput.addEventListener("input", () => { rateInput.dataset.touched = "1"; });
   row.querySelectorAll("input, select").forEach((el) => el.addEventListener("change", refreshSchoolCalc));
   row.querySelector(".s-remove").addEventListener("click", () => { row.remove(); refreshSchoolCalc(); });
   sessionRows.append(row);
@@ -633,8 +649,36 @@ function readSessions() {
     time: row.querySelector(".s-time").value,
     duration: Number(row.querySelector(".s-duration").value),
     courtsWanted: Math.max(1, Math.min(courts.length, Number(row.querySelector(".s-courts").value) || 1)),
+    rate: Math.max(0, Number(row.querySelector(".s-rate").value) || 0),
     row
   }));
+}
+
+function addItemRow(desc, amount) {
+  const row = document.createElement("div");
+  row.className = "item-row";
+  row.innerHTML = `
+    <label>${t("Item")}<input type="text" class="i-desc" placeholder="${t("e.g. shuttlecocks, equipment hire")}"></label>
+    <label>${t("Amount")}<div class="quote-input"><span>$</span><input type="number" class="i-amount" min="0" step="0.01"></div></label>
+    <button type="button" class="s-remove" aria-label="${t("Remove")}">&times;</button>`;
+  if (desc) row.querySelector(".i-desc").value = desc;
+  if (amount != null) row.querySelector(".i-amount").value = amount;
+  row.querySelectorAll("input").forEach((el) => el.addEventListener("input", refreshSchoolCalc));
+  row.querySelector(".s-remove").addEventListener("click", () => { row.remove(); refreshSchoolCalc(); });
+  itemRows.append(row);
+  refreshSchoolCalc();
+}
+
+function readItems() {
+  return Array.from(itemRows.querySelectorAll(".item-row")).map((row) => ({
+    description: row.querySelector(".i-desc").value.trim(),
+    amountCents: Math.round((Number(row.querySelector(".i-amount").value) || 0) * 100)
+  })).filter((it) => it.description || it.amountCents > 0);
+}
+
+// Per-court price for a session = rate x hours.
+function sessionPerCourtCents(s) {
+  return Math.round(s.rate * (s.duration / 60) * 100);
 }
 
 function refreshSchoolCalc() {
@@ -648,15 +692,17 @@ function refreshSchoolCalc() {
       ? (isChinese() ? `${free} 片空闲` : `${free} free`)
       : (isChinese() ? `仅 ${free} 片空闲` : `only ${free} free`);
     avail.className = "s-avail " + (ok ? "ok" : "short");
-    quoteAuto += computePrice(s.date, s.time, s.duration) * s.courtsWanted;
+    quoteAuto += sessionPerCourtCents(s) / 100 * s.courtsWanted;
   });
-  if (schoolQuote.dataset.touched !== "1") schoolQuote.value = quoteAuto;
+  readItems().forEach((it) => { quoteAuto += it.amountCents / 100; });
+  if (schoolQuote.dataset.touched !== "1") schoolQuote.value = Math.round(quoteAuto * 100) / 100;
 }
 
 function openSchoolModal() {
   schoolForm.reset();
   schoolQuote.dataset.touched = "";
   sessionRows.innerHTML = "";
+  itemRows.innerHTML = "";
   schoolNote.textContent = "";
   addSessionRow(adminDate.value);
   schoolModal.hidden = false;
@@ -668,6 +714,7 @@ function closeEmailModal() { emailModal.hidden = true; document.body.classList.r
 
 function composeSchoolEmail(p, sessions) {
   const money = (cents) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
+  const rateStr = (r) => `$${Number(r) % 1 === 0 ? Number(r) : Number(r).toFixed(2)} per hour, per court`;
   const lines = [];
   lines.push(`Dear ${p.contactName || p.schoolName},`, "");
   lines.push("This email confirms your court booking at Mount Waverley Badminton Centre.", "");
@@ -676,9 +723,14 @@ function composeSchoolEmail(p, sessions) {
   sessions.forEach((s) => {
     const end = timeFromMinutes(minutesFromTime(s.time) + Number(s.duration));
     const n = s.courts.length;
-    lines.push(`  • ${displayDate(s.date)} — ${displayTime(s.time)} to ${displayTime(end)} — ${n} court${n > 1 ? "s" : ""}`);
+    lines.push(`  • ${displayDate(s.date)} — ${displayTime(s.time)} to ${displayTime(end)} — ${n} court${n > 1 ? "s" : ""} — ${rateStr(s.rate)}`);
   });
-  lines.push("", "QUOTE", `  Total: ${money(p.quoteCents)}`, "");
+  lines.push("");
+  if (p.items && p.items.length) {
+    lines.push("ADDITIONAL ITEMS");
+    p.items.forEach((it) => lines.push(`  • ${it.description || "Item"} — ${money(it.amountCents)}`));
+    lines.push("");
+  }
   lines.push("CANCELLATION POLICY");
   lines.push("  Please note that school and large-group bookings cannot be cancelled or changed once confirmed. To accommodate your group we reserve the courts exclusively and clear all other bookings for these times, so the sessions above are final.", "");
   lines.push("VENUE");
@@ -705,8 +757,13 @@ function emailForSchool(id) {
   if (!h) return;
   const sessions = readBookings().filter((b) => b.schoolId === id)
     .sort((a, b) => a.date.localeCompare(b.date) || minutesFromTime(a.time) - minutesFromTime(b.time))
-    .map((b) => ({ date: b.date, time: b.time, duration: b.duration, courts: b.courts }));
-  showSchoolEmail({ schoolName: h.school_name, contactName: h.contact_name, email: h.contact_email, phone: h.contact_phone, quoteCents: h.quote_cents }, sessions);
+    .map((b) => {
+      const hours = b.duration / 60;
+      const perCourt = b.courtCount ? (b.price / b.courtCount) : b.price; // b.price = perCourt x courts
+      const rate = hours > 0 ? Math.round((perCourt / hours) * 100) / 100 : 0;
+      return { date: b.date, time: b.time, duration: b.duration, courts: b.courts, rate };
+    });
+  showSchoolEmail({ schoolName: h.school_name, contactName: h.contact_name, email: h.contact_email, phone: h.contact_phone, items: h.items || [] }, sessions);
 }
 
 async function removeSchool(id) {
@@ -749,6 +806,7 @@ function bindSchoolBookings() {
   if (!schoolForm) return;
   document.querySelector("#new-school-btn").addEventListener("click", openSchoolModal);
   document.querySelector("#add-session-btn").addEventListener("click", () => addSessionRow());
+  document.querySelector("#add-item-btn").addEventListener("click", () => addItemRow());
   document.querySelector("#close-school-modal").addEventListener("click", closeSchoolModal);
   document.querySelector("#school-modal-backdrop").addEventListener("click", closeSchoolModal);
   document.querySelector("#close-email-modal").addEventListener("click", closeEmailModal);
@@ -778,7 +836,7 @@ function bindSchoolBookings() {
           : `${displayDate(s.date)} ${displayTime(s.time)}: only ${got.length} court(s) free — clear other bookings first.`;
         return;
       }
-      allocated.push({ date: s.date, time: s.time, duration: s.duration, courts: got });
+      allocated.push({ date: s.date, time: s.time, duration: s.duration, courts: got, rate: s.rate, perCourtCents: sessionPerCourtCents(s) });
     }
 
     const submitBtn = schoolForm.querySelector('button[type="submit"]');
@@ -791,6 +849,7 @@ function bindSchoolBookings() {
       phone: document.querySelector("#school-phone").value.trim(),
       notes: document.querySelector("#school-notes").value.trim(),
       quoteCents: Math.round(Number(schoolQuote.value || 0) * 100),
+      items: readItems(),
       sessions: allocated
     };
     try {

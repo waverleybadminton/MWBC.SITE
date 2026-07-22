@@ -1516,9 +1516,10 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .school-sessions-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.7rem; }
 .school-sessions-head strong { font-size: 0.95rem; }
 
-.session-row { display: grid; grid-template-columns: 1.5fr 1.1fr 1.1fr 0.8fr auto auto; gap: 0.5rem; align-items: end; margin-bottom: 0.55rem; }
-.session-row label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
-.session-row input, .session-row select { min-height: 42px; }
+.session-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 0.7fr 0.8fr auto auto; gap: 0.5rem; align-items: end; margin-bottom: 0.55rem; }
+.session-row label, .item-row label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
+.session-row input, .session-row select, .item-row input { min-height: 42px; }
+.item-row { display: grid; grid-template-columns: 2fr 1fr auto; gap: 0.5rem; align-items: end; margin-bottom: 0.55rem; }
 .s-avail { align-self: center; font-size: 0.74rem; font-weight: 700; white-space: nowrap; }
 .s-avail.ok { color: var(--green-deep); }
 .s-avail.short { color: #c23b3b; }
@@ -1533,7 +1534,7 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .email-actions { align-items: center; }
 
 @media (max-width: 620px) {
-  .session-row { grid-template-columns: 1fr 1fr; }
+  .session-row, .item-row { grid-template-columns: 1fr 1fr; }
   .s-avail, .s-remove { align-self: start; }
 }
 

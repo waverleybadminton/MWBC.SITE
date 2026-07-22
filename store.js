@@ -236,10 +236,17 @@
     },
 
     // Create a school booking (many sessions) in one transaction. Staff only.
+    // Each session carries price_cents = per-court price (rate x hours).
     async createSchoolBooking(b) {
       const sessions = (b.sessions || []).map((s) => {
         const start = timeToMin(s.time);
-        return { date: s.date, start_min: start, end_min: start + Number(s.duration), courts: s.courts.map(courtNum) };
+        return {
+          date: s.date,
+          start_min: start,
+          end_min: start + Number(s.duration),
+          courts: s.courts.map(courtNum),
+          price_cents: Math.round(s.perCourtCents || 0)
+        };
       });
       const { data, error } = await sb().rpc("create_school_booking", {
         p_school_name: b.schoolName,
@@ -248,6 +255,7 @@
         p_contact_phone: b.phone || "",
         p_notes: b.notes || "",
         p_quote_cents: Math.round(b.quoteCents || 0),
+        p_items: b.items || [],
         p_sessions: sessions
       });
       if (error) throw error;
