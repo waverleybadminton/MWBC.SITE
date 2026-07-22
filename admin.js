@@ -152,15 +152,19 @@ function getScheduleTimes() {
   return times;
 }
 
-// Colour = who booked (blue online / green booked-by-us); an amber bar + tag
-// marks unpaid.
+// Colour = who booked (blue online / green booked-by-us / purple school); an
+// amber bar + tag marks unpaid.
 function bookingClass(booking) {
+  if (booking.source === "School") return "booking-school";
   const source = booking.source === "Phone" || booking.source === "Manual" ? "booking-phone" : "booking-online";
   const paid = booking.status === "Paid" ? "is-paid" : "is-unpaid";
   return `${source} ${paid}`;
 }
 
 function bookingBlockHTML(booking) {
+  if (booking.source === "School") {
+    return `<span class="bb-name">${escapeHtml(booking.name)}</span><span class="bb-tag">${t("School")}</span>`;
+  }
   const phone = booking.phone || booking.email || "";
   const tag = booking.status === "Paid" ? t("Paid") : t("Unpaid");
   return `<span class="bb-name">${escapeHtml(booking.name)}</span>`
@@ -213,6 +217,10 @@ function resetModalFields() {
 
 // Click an existing booking → open the modal pre-filled to edit it.
 function openEditModal(booking) {
+  if (booking.source === "School") {
+    window.alert(t("School bookings are managed in the School bookings list below."));
+    return;
+  }
   resetModalFields();
   editingGroupId = booking.id;
   editingSource = booking.source === "Online" ? "online" : "phone";
@@ -410,7 +418,8 @@ function renderBookings() {
 
   bookings.forEach((booking) => {
     const row = document.createElement("tr");
-    const sourceClass = booking.source === "Phone" || booking.source === "Manual" ? "src-phone" : "src-online";
+    const sourceClass = booking.source === "School" ? "src-school"
+      : (booking.source === "Phone" || booking.source === "Manual" ? "src-phone" : "src-online");
     const paidClass = booking.status === "Paid" ? "pill-paid" : "pill-unpaid";
     row.innerHTML = `
       <td>${escapeHtml(booking.name)}</td>
@@ -571,6 +580,233 @@ function renderAll() {
   renderDayTabs();
   renderSchedule();
   renderBookings();
+  renderSchoolList();
+}
+
+/* ---------- school bookings ---------- */
+
+const schoolModal = document.querySelector("#school-modal");
+const schoolForm = document.querySelector("#school-booking-form");
+const sessionRows = document.querySelector("#session-rows");
+const schoolQuote = document.querySelector("#school-quote");
+const schoolNote = document.querySelector("#school-note");
+const schoolBookingsBody = document.querySelector("#school-bookings");
+const emailModal = document.querySelector("#email-modal");
+const emailBody = document.querySelector("#email-body");
+const emailGmail = document.querySelector("#email-gmail");
+let schoolHeaders = [];
+
+function durationOptionsHTML(selected) {
+  return [60, 90, 120, 150, 180, 210, 240, 270, 300]
+    .map((m) => `<option value="${m}"${m === selected ? " selected" : ""}>${m < 180 ? m + " min" : (m / 60) + " h"}</option>`).join("");
+}
+function timeOptionsHTML(selected) {
+  return getScheduleTimes().map((tm) => `<option value="${tm}"${tm === selected ? " selected" : ""}>${displayTime(tm)}</option>`).join("");
+}
+function freeCourtCount(date, time, duration) {
+  if (!window.MWBC_SCHEDULER) return courts.length;
+  return window.MWBC_SCHEDULER.allocate(readBookings(), date, time, duration, courts.length).length;
+}
+
+function addSessionRow(date) {
+  const row = document.createElement("div");
+  row.className = "session-row";
+  row.innerHTML = `
+    <label>${t("Date")}<input type="date" class="s-date" required></label>
+    <label>${t("Start time")}<select class="s-time">${timeOptionsHTML("09:00")}</select></label>
+    <label>${t("Duration")}<select class="s-duration">${durationOptionsHTML(120)}</select></label>
+    <label>${t("Courts")}<input type="number" class="s-courts" min="1" max="14" value="14"></label>
+    <span class="s-avail"></span>
+    <button type="button" class="s-remove" aria-label="${t("Remove")}">&times;</button>`;
+  const dateInput = row.querySelector(".s-date");
+  dateInput.value = date || adminDate.value;
+  dateInput.min = isoToday();
+  row.querySelectorAll("input, select").forEach((el) => el.addEventListener("change", refreshSchoolCalc));
+  row.querySelector(".s-remove").addEventListener("click", () => { row.remove(); refreshSchoolCalc(); });
+  sessionRows.append(row);
+  refreshSchoolCalc();
+}
+
+function readSessions() {
+  return Array.from(sessionRows.querySelectorAll(".session-row")).map((row) => ({
+    date: row.querySelector(".s-date").value,
+    time: row.querySelector(".s-time").value,
+    duration: Number(row.querySelector(".s-duration").value),
+    courtsWanted: Math.max(1, Math.min(courts.length, Number(row.querySelector(".s-courts").value) || 1)),
+    row
+  }));
+}
+
+function refreshSchoolCalc() {
+  let quoteAuto = 0;
+  readSessions().forEach((s) => {
+    if (!s.date) return;
+    const free = freeCourtCount(s.date, s.time, s.duration);
+    const ok = free >= s.courtsWanted;
+    const avail = s.row.querySelector(".s-avail");
+    avail.textContent = ok
+      ? (isChinese() ? `${free} 片空闲` : `${free} free`)
+      : (isChinese() ? `仅 ${free} 片空闲` : `only ${free} free`);
+    avail.className = "s-avail " + (ok ? "ok" : "short");
+    quoteAuto += computePrice(s.date, s.time, s.duration) * s.courtsWanted;
+  });
+  if (schoolQuote.dataset.touched !== "1") schoolQuote.value = quoteAuto;
+}
+
+function openSchoolModal() {
+  schoolForm.reset();
+  schoolQuote.dataset.touched = "";
+  sessionRows.innerHTML = "";
+  schoolNote.textContent = "";
+  addSessionRow(adminDate.value);
+  schoolModal.hidden = false;
+  document.body.classList.add("modal-open");
+  window.setTimeout(() => document.querySelector("#school-name").focus(), 0);
+}
+function closeSchoolModal() { schoolModal.hidden = true; document.body.classList.remove("modal-open"); }
+function closeEmailModal() { emailModal.hidden = true; document.body.classList.remove("modal-open"); }
+
+function composeSchoolEmail(p, sessions) {
+  const money = (cents) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
+  const lines = [];
+  lines.push(`Dear ${p.contactName || p.schoolName},`, "");
+  lines.push("This email confirms your court booking at Mount Waverley Badminton Centre.", "");
+  lines.push(`School: ${p.schoolName}`, "");
+  lines.push("CONFIRMED SESSIONS");
+  sessions.forEach((s) => {
+    const end = timeFromMinutes(minutesFromTime(s.time) + Number(s.duration));
+    const n = s.courts.length;
+    lines.push(`  • ${displayDate(s.date)} — ${displayTime(s.time)} to ${displayTime(end)} — ${n} court${n > 1 ? "s" : ""}`);
+  });
+  lines.push("", "QUOTE", `  Total: ${money(p.quoteCents)}`, "");
+  lines.push("CANCELLATION POLICY");
+  lines.push("  Please note that school and large-group bookings cannot be cancelled or changed once confirmed. To accommodate your group we reserve the courts exclusively and clear all other bookings for these times, so the sessions above are final.", "");
+  lines.push("VENUE");
+  lines.push("  Mount Waverley Badminton Centre");
+  lines.push("  Unit 57, 170 Forster Rd, Mount Waverley VIC 3149");
+  lines.push("  0452 242 399 · booking.mwbc@gmail.com", "");
+  lines.push(`We look forward to hosting ${p.schoolName}.`, "");
+  lines.push("Kind regards,", "Mount Waverley Badminton Centre");
+  return lines.join("\n");
+}
+
+function showSchoolEmail(p, sessions) {
+  const subject = `Booking confirmation — ${p.schoolName} at Mount Waverley Badminton Centre`;
+  const body = composeSchoolEmail(p, sessions);
+  emailBody.value = body;
+  emailGmail.href = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(p.email || "")}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  document.querySelector("#email-note").textContent = "";
+  emailModal.hidden = false;
+  document.body.classList.add("modal-open");
+}
+
+function emailForSchool(id) {
+  const h = schoolHeaders.find((x) => x.id === id);
+  if (!h) return;
+  const sessions = readBookings().filter((b) => b.schoolId === id)
+    .sort((a, b) => a.date.localeCompare(b.date) || minutesFromTime(a.time) - minutesFromTime(b.time))
+    .map((b) => ({ date: b.date, time: b.time, duration: b.duration, courts: b.courts }));
+  showSchoolEmail({ schoolName: h.school_name, contactName: h.contact_name, email: h.contact_email, phone: h.contact_phone, quoteCents: h.quote_cents }, sessions);
+}
+
+async function removeSchool(id) {
+  const h = schoolHeaders.find((x) => x.id === id);
+  if (!window.confirm(`${t("Remove this school booking and free all its courts?")}\n\n${h ? h.school_name : ""}`)) return;
+  try { await window.MWBC_STORE.removeSchoolBooking(id); await renderSchoolList(); }
+  catch { window.alert(t("Couldn't remove. Please try again.")); }
+}
+
+async function renderSchoolList() {
+  if (!schoolBookingsBody || !window.MWBC_STORE || !window.MWBC_STORE.isAuthed()) return;
+  schoolHeaders = await window.MWBC_STORE.listSchoolBookings();
+  schoolBookingsBody.innerHTML = "";
+  if (!schoolHeaders.length) {
+    schoolBookingsBody.innerHTML = `<tr><td colspan="5">${t("No school bookings yet.")}</td></tr>`;
+    return;
+  }
+  const all = readBookings();
+  schoolHeaders.forEach((h) => {
+    const rows = all.filter((b) => b.schoolId === h.id);
+    const dates = [...new Set(rows.map((b) => b.date))].sort();
+    const dateSummary = dates.length ? `${displayDate(dates[0], { short: true })}${dates.length > 1 ? ` +${dates.length - 1}` : ""}` : "—";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(h.school_name)}</td>
+      <td>${escapeHtml(h.contact_email || h.contact_phone || h.contact_name || "")}</td>
+      <td>${rows.length} · ${escapeHtml(dateSummary)}</td>
+      <td>$${(Number(h.quote_cents || 0) / 100).toFixed(2)}</td>
+      <td class="table-actions">
+        <button class="table-action" type="button" data-school-email="${h.id}">${t("Email")}</button>
+        <button class="table-action danger" type="button" data-school-remove="${h.id}">${t("Remove")}</button>
+      </td>`;
+    schoolBookingsBody.append(tr);
+  });
+  schoolBookingsBody.querySelectorAll("[data-school-email]").forEach((b) => b.addEventListener("click", () => emailForSchool(b.dataset.schoolEmail)));
+  schoolBookingsBody.querySelectorAll("[data-school-remove]").forEach((b) => b.addEventListener("click", () => removeSchool(b.dataset.schoolRemove)));
+}
+
+function bindSchoolBookings() {
+  if (!schoolForm) return;
+  document.querySelector("#new-school-btn").addEventListener("click", openSchoolModal);
+  document.querySelector("#add-session-btn").addEventListener("click", () => addSessionRow());
+  document.querySelector("#close-school-modal").addEventListener("click", closeSchoolModal);
+  document.querySelector("#school-modal-backdrop").addEventListener("click", closeSchoolModal);
+  document.querySelector("#close-email-modal").addEventListener("click", closeEmailModal);
+  document.querySelector("#email-modal-backdrop").addEventListener("click", closeEmailModal);
+  schoolQuote.addEventListener("input", () => { schoolQuote.dataset.touched = "1"; });
+
+  document.querySelector("#email-copy").addEventListener("click", async () => {
+    const note = document.querySelector("#email-note");
+    try { await navigator.clipboard.writeText(emailBody.value); note.textContent = t("Copied."); }
+    catch { emailBody.select(); document.execCommand("copy"); note.textContent = t("Copied."); }
+  });
+
+  schoolForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!schoolForm.reportValidity()) return;
+    const sessions = readSessions().filter((s) => s.date);
+    if (!sessions.length) { schoolNote.textContent = t("Add at least one session."); return; }
+
+    const allocated = [];
+    for (const s of sessions) {
+      const got = window.MWBC_SCHEDULER
+        ? window.MWBC_SCHEDULER.allocate(readBookings(), s.date, s.time, s.duration, s.courtsWanted)
+        : [];
+      if (got.length < s.courtsWanted) {
+        schoolNote.textContent = isChinese()
+          ? `${displayDate(s.date)} ${displayTime(s.time)}：仅有 ${got.length} 片场地空闲，请先清出其他预订。`
+          : `${displayDate(s.date)} ${displayTime(s.time)}: only ${got.length} court(s) free — clear other bookings first.`;
+        return;
+      }
+      allocated.push({ date: s.date, time: s.time, duration: s.duration, courts: got });
+    }
+
+    const submitBtn = schoolForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    schoolNote.textContent = t("Saving…");
+    const payload = {
+      schoolName: document.querySelector("#school-name").value.trim(),
+      contactName: document.querySelector("#school-contact").value.trim(),
+      email: document.querySelector("#school-email").value.trim(),
+      phone: document.querySelector("#school-phone").value.trim(),
+      notes: document.querySelector("#school-notes").value.trim(),
+      quoteCents: Math.round(Number(schoolQuote.value || 0) * 100),
+      sessions: allocated
+    };
+    try {
+      await window.MWBC_STORE.createSchoolBooking(payload);
+      closeSchoolModal();
+      await renderSchoolList();
+      showSchoolEmail(payload, allocated);
+    } catch (err) {
+      const m = String((err && (err.message || err.msg)) || "");
+      schoolNote.textContent = /slot_unavailable|exclusion|overlap|23P01/i.test(m)
+        ? (isChinese() ? "部分场地已被预订，请先清出冲突预订。" : "Some courts are already booked — clear conflicts first.")
+        : (isChinese() ? "保存失败，请重试。" : "Couldn't save. Please try again.");
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
 }
 
 /* ---------- auth (Supabase) ---------- */
@@ -597,6 +833,7 @@ window.refreshAdminSchedule = () => {
 adminDate.value = isoToday();
 manualDate.value = adminDate.value;
 bindManualBooking();
+bindSchoolBookings();
 setAdminState(isAdminAuthenticated());
 
 loginForm.addEventListener("submit", async (event) => {
@@ -649,7 +886,10 @@ closeManualModalButton.addEventListener("click", closeManualModal);
 manualModalBackdrop.addEventListener("click", closeManualModal);
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !manualModal.hidden) closeManualModal();
+  if (event.key !== "Escape") return;
+  if (!manualModal.hidden) closeManualModal();
+  if (schoolModal && !schoolModal.hidden) closeSchoolModal();
+  if (emailModal && !emailModal.hidden) closeEmailModal();
 });
 
 clearButton.addEventListener("click", () => {

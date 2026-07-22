@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y35">
+    <link rel="stylesheet" href="./styles.css?v=y36">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -765,6 +765,7 @@
               <div class="schedule-legend" aria-label="Booking colour legend">
                 <span><i class="legend-online"></i>Online</span>
                 <span><i class="legend-phone"></i>Booked by us</span>
+                <span><i class="legend-school"></i>School</span>
                 <span><i class="legend-unpaid"></i>Unpaid</span>
               </div>
             </div>
@@ -776,6 +777,7 @@
               </div>
               <div class="admin-selection-actions">
                 <button class="btn btn-book small-button" id="new-booking-btn" type="button">+ New booking</button>
+                <button class="btn btn-enquire small-button" id="new-school-btn" type="button">+ School booking</button>
               </div>
             </div>
             <div class="schedule-scroll">
@@ -877,6 +879,63 @@
               </form>
             </div>
 
+            <div class="admin-modal" id="school-modal" hidden>
+              <button class="admin-modal-backdrop" id="school-modal-backdrop" type="button" aria-label="Close school booking form"></button>
+              <form class="manual-booking-card school-booking-card" id="school-booking-form" role="dialog" aria-modal="true" aria-labelledby="school-booking-title">
+                <div class="admin-section-title admin-modal-title">
+                  <div>
+                    <p class="kicker">School / group booking</p>
+                    <h2 id="school-booking-title">New school booking</h2>
+                  </div>
+                  <button class="modal-close" id="close-school-modal" type="button" aria-label="Close">&times;</button>
+                </div>
+                <div class="manual-form-grid">
+                  <label>School name<input id="school-name" type="text" placeholder="e.g. Mount Waverley Secondary College" required></label>
+                  <label>Contact name<input id="school-contact" type="text" placeholder="Teacher / coordinator"></label>
+                  <label>Contact email<input id="school-email" type="email" placeholder="name@school.vic.edu.au"></label>
+                  <label>Contact phone<input id="school-phone" type="tel" placeholder="03 xxxx xxxx"></label>
+                </div>
+                <div class="school-sessions">
+                  <div class="school-sessions-head">
+                    <strong>Sessions</strong>
+                    <button class="btn btn-ghost-dark small-button" id="add-session-btn" type="button">+ Add session</button>
+                  </div>
+                  <div id="session-rows"></div>
+                </div>
+                <div class="manual-form-grid">
+                  <label>Quote (total)
+                    <div class="quote-input"><span>$</span><input id="school-quote" type="number" min="0" step="1" inputmode="decimal"></div>
+                    <small class="field-note">Auto-calculated from sessions; edit for an agreed price.</small>
+                  </label>
+                  <label class="manual-notes">Notes<input id="school-notes" type="text" placeholder="e.g. Term 3 PE, whole venue"></label>
+                </div>
+                <div class="manual-actions">
+                  <button class="btn btn-book" type="submit">Create booking</button>
+                  <p id="school-note" class="form-note" role="status"></p>
+                </div>
+              </form>
+            </div>
+
+            <div class="admin-modal" id="email-modal" hidden>
+              <button class="admin-modal-backdrop" id="email-modal-backdrop" type="button" aria-label="Close"></button>
+              <div class="manual-booking-card" role="dialog" aria-modal="true" aria-labelledby="email-modal-title">
+                <div class="admin-section-title admin-modal-title">
+                  <div>
+                    <p class="kicker">Confirmation email</p>
+                    <h2 id="email-modal-title">School booking confirmation</h2>
+                  </div>
+                  <button class="modal-close" id="close-email-modal" type="button" aria-label="Close">&times;</button>
+                </div>
+                <p class="field-note">Ready to send to the school. Copy it, or open a pre-filled Gmail draft.</p>
+                <textarea id="email-body" class="email-body" readonly rows="16"></textarea>
+                <div class="manual-actions email-actions">
+                  <button class="btn btn-book" type="button" id="email-copy">Copy email</button>
+                  <a class="btn btn-enquire" id="email-gmail" href="#" target="_blank" rel="noopener">Open in Gmail</a>
+                  <p id="email-note" class="form-note" role="status"></p>
+                </div>
+              </div>
+            </div>
+
             <div class="admin-table-shell">
               <div class="admin-section-title">
                 <h2>Bookings for selected day</h2>
@@ -897,6 +956,26 @@
                     </tr>
                   </thead>
                   <tbody id="admin-bookings"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="admin-table-shell school-list-shell">
+              <div class="admin-section-title">
+                <h2>School bookings</h2>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>School</th>
+                      <th>Contact</th>
+                      <th>Sessions</th>
+                      <th>Quote</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="school-bookings"></tbody>
                 </table>
               </div>
             </div>
@@ -939,12 +1018,12 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y35"></script>
-    <script src="./mwbc-scheduler.js?v=y35"></script>
-    <script src="./supabase-client.js?v=y35"></script>
-    <script src="./store.js?v=y35"></script>
-    <script src="./main.js?v=y35"></script>
-    <script src="./app.js?v=y35"></script>
-    <script src="./admin.js?v=y35"></script>
+    <script src="./i18n.js?v=y36"></script>
+    <script src="./mwbc-scheduler.js?v=y36"></script>
+    <script src="./supabase-client.js?v=y36"></script>
+    <script src="./store.js?v=y36"></script>
+    <script src="./main.js?v=y36"></script>
+    <script src="./app.js?v=y36"></script>
+    <script src="./admin.js?v=y36"></script>
   </body>
 </html>

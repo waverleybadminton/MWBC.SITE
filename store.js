@@ -24,7 +24,7 @@
   const courtNum = (c) => Number(String(c).match(/\d+/)?.[0] || 0);
   const courtName = (n) => `Court ${n}`;
   const STATUS = { paid: "Paid", unpaid: "Unpaid", hold: "Hold", cancelled: "Cancelled" };
-  const SOURCE = { online: "Online", phone: "Phone" };
+  const SOURCE = { online: "Online", phone: "Phone", school: "School" };
 
   function uuid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -58,6 +58,7 @@
           price: 0,
           notes: r.notes || "",
           stripeSessionId: r.stripe_session_id || null,
+          schoolId: r.school_id || null,
           createdAt: r.created_at
         };
         map.set(r.group_id, g);
@@ -230,6 +231,37 @@
 
     async remove(groupId) {
       const { error } = await sb().from("bookings").delete().eq("group_id", groupId);
+      if (error) throw error;
+      await this._refresh();
+    },
+
+    // Create a school booking (many sessions) in one transaction. Staff only.
+    async createSchoolBooking(b) {
+      const sessions = (b.sessions || []).map((s) => {
+        const start = timeToMin(s.time);
+        return { date: s.date, start_min: start, end_min: start + Number(s.duration), courts: s.courts.map(courtNum) };
+      });
+      const { data, error } = await sb().rpc("create_school_booking", {
+        p_school_name: b.schoolName,
+        p_contact_name: b.contactName || "",
+        p_contact_email: b.email || "",
+        p_contact_phone: b.phone || "",
+        p_notes: b.notes || "",
+        p_quote_cents: Math.round(b.quoteCents || 0),
+        p_sessions: sessions
+      });
+      if (error) throw error;
+      await this._refresh();
+      return data; // school_bookings id
+    },
+
+    async listSchoolBookings() {
+      const { data, error } = await sb().from("school_bookings").select("*").order("created_at", { ascending: false });
+      return error ? [] : (data || []);
+    },
+
+    async removeSchoolBooking(schoolId) {
+      const { error } = await sb().from("school_bookings").delete().eq("id", schoolId);
       if (error) throw error;
       await this._refresh();
     },

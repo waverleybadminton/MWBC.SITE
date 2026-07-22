@@ -1506,6 +1506,37 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .table-actions { display: flex; gap: 0.4rem; white-space: nowrap; }
 .table-action.danger { color: #c23b3b; }
 
+/* school bookings */
+.booking-school { background: #6b4fbb; }
+.src-school { background: rgba(107, 79, 187, 0.16); color: #5334a6; }
+.legend-school { background: #6b4fbb; }
+
+.school-booking-card { max-width: 780px; }
+.school-sessions { border: 1px solid var(--line); border-radius: var(--radius-m); padding: 0.9rem; margin: 0.3rem 0 1rem; }
+.school-sessions-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.7rem; }
+.school-sessions-head strong { font-size: 0.95rem; }
+
+.session-row { display: grid; grid-template-columns: 1.5fr 1.1fr 1.1fr 0.8fr auto auto; gap: 0.5rem; align-items: end; margin-bottom: 0.55rem; }
+.session-row label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
+.session-row input, .session-row select { min-height: 42px; }
+.s-avail { align-self: center; font-size: 0.74rem; font-weight: 700; white-space: nowrap; }
+.s-avail.ok { color: var(--green-deep); }
+.s-avail.short { color: #c23b3b; }
+.s-remove { align-self: center; border: 0; background: transparent; font-size: 1.4rem; line-height: 1; color: var(--ink-soft); cursor: pointer; }
+.s-remove:hover { color: #c23b3b; }
+
+.quote-input { display: flex; align-items: center; gap: 0.35rem; }
+.quote-input span { font-weight: 800; font-size: 1.05rem; }
+.quote-input input { flex: 1; }
+
+.email-body { width: 100%; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.82rem; line-height: 1.5; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 0.8rem; resize: vertical; background: var(--paper); color: var(--ink); }
+.email-actions { align-items: center; }
+
+@media (max-width: 620px) {
+  .session-row { grid-template-columns: 1fr 1fr; }
+  .s-avail, .s-remove { align-self: start; }
+}
+
 .admin-layout { display: grid; gap: 1.5rem; }
 
 .admin-modal { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 1rem; }
