@@ -711,6 +711,10 @@ function openSchoolModal() {
   sessionRows.innerHTML = "";
   itemRows.innerHTML = "";
   schoolNote.textContent = "";
+  const pasteNote = document.querySelector("#paste-note");
+  if (pasteNote) pasteNote.textContent = "";
+  const pasteWrap = document.querySelector(".paste-fill");
+  if (pasteWrap) pasteWrap.open = false;
   document.querySelector("#school-booking-title").textContent = t("New school booking");
   schoolForm.querySelector('button[type="submit"]').textContent = t("Create booking");
   addSessionRow(adminDate.value);
@@ -732,6 +736,7 @@ async function openSchoolEditModal(id) {
   document.querySelector("#school-contact").value = h.contact_name || "";
   document.querySelector("#school-email").value = h.contact_email || "";
   document.querySelector("#school-phone").value = h.contact_phone || "";
+  document.querySelector("#school-reference").value = h.reference || "";
   document.querySelector("#school-notes").value = h.notes || "";
 
   const sessions = readBookings().filter((b) => b.schoolId === id)
@@ -765,34 +770,206 @@ async function openSchoolEditModal(id) {
 function closeSchoolModal() { schoolModal.hidden = true; document.body.classList.remove("modal-open"); }
 function closeEmailModal() { emailModal.hidden = true; document.body.classList.remove("modal-open"); }
 
+// Long-form email date/time, e.g. "Thursday 30 July 2026" and "4:00 pm".
+function emailDate(dateValue) {
+  return new Intl.DateTimeFormat("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    .format(new Date(`${dateValue}T12:00:00`));
+}
+function emailTime(time) {
+  const [h, m] = time.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
+}
+function shortNameFor(p) {
+  if (p.shortName && p.shortName.trim()) return p.shortName.trim();
+  if (p.reference && p.reference.trim()) return p.reference.trim().split(/[-\s/]/)[0];
+  return p.schoolName;
+}
+
 function composeSchoolEmail(p, sessions) {
   const money = (cents) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
-  const rateStr = (r) => `$${Number(r) % 1 === 0 ? Number(r) : Number(r).toFixed(2)} per hour, per court`;
-  const lines = [];
-  lines.push(`Dear ${p.contactName || p.schoolName},`, "");
-  lines.push("This email confirms your court booking at Mount Waverley Badminton Centre.", "");
-  lines.push(`School: ${p.schoolName}`, "");
-  lines.push("CONFIRMED SESSIONS");
+  const short = shortNameFor(p);
+  const L = [];
+  L.push(`Dear ${p.contactName || short},`, "");
+  L.push(`Thank you for choosing Mount Waverley Badminton Centre. This email confirms the following court bookings for ${short}.`, "");
+  L.push("BOOKING DETAILS");
+  L.push(`School: ${p.schoolName}`);
+  if (p.reference) L.push(`Booking reference: ${p.reference}`);
+  L.push("");
   sessions.forEach((s) => {
     const end = timeFromMinutes(minutesFromTime(s.time) + Number(s.duration));
     const n = s.courts.length;
-    lines.push(`  • ${displayDate(s.date)} — ${displayTime(s.time)} to ${displayTime(end)} — ${n} court${n > 1 ? "s" : ""} — ${rateStr(s.rate)}`);
+    L.push(emailDate(s.date));
+    L.push(`${emailTime(s.time)}–${emailTime(end)} · ${n} court${n > 1 ? "s" : ""}`, "");
   });
-  lines.push("");
+  L.push("BOOKING FEES");
+  L.push("Off-peak rate: $24 per court, per hour");
+  L.push("Weekdays before 5:00 pm");
+  L.push("Peak rate: $34 per court, per hour");
+  L.push("Weekdays from 5:00 pm, weekends and public holidays", "");
   if (p.items && p.items.length) {
-    lines.push("ADDITIONAL ITEMS");
-    p.items.forEach((it) => lines.push(`  • ${it.description || "Item"} — ${money(it.amountCents)}`));
-    lines.push("");
+    L.push("ADDITIONAL ITEMS");
+    p.items.forEach((it) => L.push(`${it.description || "Item"} — ${money(it.amountCents)}`));
+    L.push("");
   }
-  lines.push("CANCELLATION POLICY");
-  lines.push("  Please note that school and large-group bookings cannot be cancelled or changed once confirmed. To accommodate your group we reserve the courts exclusively and clear all other bookings for these times, so the sessions above are final.", "");
-  lines.push("VENUE");
-  lines.push("  Mount Waverley Badminton Centre");
-  lines.push("  Unit 57, 170 Forster Rd, Mount Waverley VIC 3149");
-  lines.push("  0452 242 399 · booking.mwbc@gmail.com", "");
-  lines.push(`We look forward to hosting ${p.schoolName}.`, "");
-  lines.push("Kind regards,", "Mount Waverley Badminton Centre");
-  return lines.join("\n");
+  L.push("Please provide a purchase-order number or confirm the appropriate billing contact so that we can issue the invoice.", "");
+  L.push("CANCELLATION AND CHANGES");
+  L.push(`These courts are reserved exclusively for ${short} and removed from general availability. Accordingly, confirmed school and large-group bookings are non-refundable.`);
+  L.push("Any request to change the date, time or number of courts is subject to availability and approval by Mount Waverley Badminton Centre. Where a change cannot be accommodated, the original booking fee will remain payable.", "");
+  L.push("VENUE");
+  L.push("Mount Waverley Badminton Centre");
+  L.push("Unit 59, 170 Forster Road");
+  L.push("Mount Waverley VIC 3149");
+  L.push("Mobile: 0452 242 399");
+  L.push("Email: booking.mwbc@gmail.com");
+  L.push("Website: www.mwbcbadminton.com.au", "");
+  L.push("Please review the details above and let me know promptly if anything requires correction.");
+  L.push(`We look forward to welcoming ${short} and hosting your badminton matches.`, "");
+  L.push("Kind regards,");
+  L.push("MWBC");
+  L.push("Phone: 0452 242 399");
+  L.push("Tel: 03 8555 0922");
+  L.push("Address: 59/170 Forster Rd, Mt Waverley, VIC 3149");
+  L.push("Email: booking.mwbc@gmail.com");
+  L.push("Website: http://www.mwbcbadminton.com.au");
+  return L.join("\n");
+}
+
+/* ---------- paste-an-email → auto-fill ---------- */
+
+const OUR_EMAILS = ["booking.mwbc@gmail.com"];
+const OUR_PHONE_DIGITS = ["0452242399", "0385550922"];
+const MONTHS = {
+  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8,
+  september: 9, october: 10, november: 11, december: 12,
+  jan: 1, feb: 2, mar: 3, apr: 4, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12
+};
+const pad2 = (n) => String(n).padStart(2, "0");
+const digitsOnly = (s) => String(s || "").replace(/\D/g, "");
+
+function guessYear(mo, d) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let y = today.getFullYear();
+  if (new Date(y, mo - 1, d) < today) y += 1;
+  return y;
+}
+
+function parseDate(str) {
+  let m = str.match(/\b(\d{1,2})\s+([A-Za-z]{3,9})\.?\s*(\d{4})?/);
+  if (m && MONTHS[m[2].toLowerCase()]) {
+    const d = +m[1], mo = MONTHS[m[2].toLowerCase()], y = m[3] ? +m[3] : guessYear(mo, d);
+    if (d >= 1 && d <= 31) return `${y}-${pad2(mo)}-${pad2(d)}`;
+  }
+  m = str.match(/\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:,)?\s*(\d{4})?/);
+  if (m && MONTHS[m[1].toLowerCase()]) {
+    const mo = MONTHS[m[1].toLowerCase()], d = +m[2], y = m[3] ? +m[3] : guessYear(mo, d);
+    if (d >= 1 && d <= 31) return `${y}-${pad2(mo)}-${pad2(d)}`;
+  }
+  m = str.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  if (m) return `${m[1]}-${pad2(+m[2])}-${pad2(+m[3])}`;
+  m = str.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\b/);
+  if (m) { let d = +m[1], mo = +m[2], y = +m[3]; if (y < 100) y += 2000; if (d <= 31 && mo <= 12) return `${y}-${pad2(mo)}-${pad2(d)}`; }
+  return null;
+}
+
+function parseTimeRange(str) {
+  const m = str.match(/(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?\s*(?:–|-|—|to|until)\s*(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?/i);
+  if (!m) return null;
+  const to24 = (h, ap, other) => {
+    ap = (ap || other || "").toLowerCase().replace(/\./g, "");
+    if (ap === "pm" && h < 12) h += 12;
+    if (ap === "am" && h === 12) h = 0;
+    return h;
+  };
+  const sh = to24(+m[1], m[3], m[6]), sm = m[2] ? +m[2] : 0;
+  const eh = to24(+m[4], m[6], m[3]), em = m[5] ? +m[5] : 0;
+  const snap = (x) => Math.round(x / 30) * 30;
+  const start = snap(sh * 60 + sm), end = snap(eh * 60 + em);
+  if (end <= start) return null;
+  return { startMin: start, duration: Math.max(30, end - start) };
+}
+
+function parseCourts(str) {
+  const m = str.match(/(\d{1,2})\s*courts?\b/i) || str.match(/\bcourts?\s*[:\-]?\s*(\d{1,2})/i);
+  if (m) { const n = +m[1]; if (n >= 1 && n <= 14) return n; }
+  return null;
+}
+
+function parseBookingEmail(text) {
+  const out = { schoolName: "", contactName: "", email: "", phone: "", reference: "", sessions: [] };
+  const lines = text.split(/\r?\n/);
+
+  const emails = (text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [])
+    .filter((e) => !OUR_EMAILS.includes(e.toLowerCase()));
+  if (emails.length) out.email = emails[0];
+
+  const phones = (text.match(/(?:\+?61[\s-]?|0)[2-478](?:[\s-]?\d){7,9}/g) || [])
+    .map((p) => p.trim())
+    .filter((p) => !OUR_PHONE_DIGITS.includes(digitsOnly(p).replace(/^61/, "0")));
+  if (phones.length) out.phone = phones[0];
+
+  let m = text.match(/School\s*(?:name)?\s*[:\-]\s*(.+)/i);
+  if (m) out.schoolName = m[1].trim().replace(/[.;,]\s*$/, "");
+  if (!out.schoolName) {
+    const kw = /(College|Grammar|Primary School|Secondary College|High School|\bSchool\b|Academy|University|Club)/i;
+    const cand = lines.find((l) => kw.test(l) && l.trim().length < 60 && !/rate|court|booking|venue|website|email|phone|www\./i.test(l));
+    if (cand) out.schoolName = cand.trim().replace(/[.;,]\s*$/, "");
+  }
+
+  m = text.match(/(?:booking\s*)?reference\s*[:\-]\s*([A-Za-z0-9\-\/]+)/i) || text.match(/\b(?:PO|P\.O\.)\s*(?:number|no\.?|#)?\s*[:#]?\s*([A-Za-z0-9\-\/]{3,})/i);
+  if (m) out.reference = m[1].trim();
+
+  let name = null;
+  m = text.match(/\b(?:kind\s+regards|regards|thanks|thank you|cheers|sincerely|best|yours)\s*,?\s*\n+\s*([A-Z][A-Za-z'\-]+(?:\s+[A-Z][A-Za-z'\-]+)?)/i);
+  if (m && m[1].toUpperCase() !== "MWBC") name = m[1];
+  if (!name) { m = text.match(/\bmy name is\s+([A-Z][A-Za-z'\-]+(?:\s+[A-Z][A-Za-z'\-]+)?)/i); if (m) name = m[1]; }
+  if (!name) { m = text.match(/\bDear\s+([A-Z][A-Za-z'\-]+)/); if (m && m[1].toUpperCase() !== "MWBC") name = m[1]; }
+  if (name) out.contactName = name.trim();
+
+  const seen = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const date = parseDate(lines[i]);
+    if (!date) continue;
+    let tr = parseTimeRange(lines[i]);
+    let courts = parseCourts(lines[i]);
+    for (let j = 1; j <= 2 && i + j < lines.length && (!tr || !courts); j++) {
+      if (!tr) tr = parseTimeRange(lines[i + j]);
+      if (!courts) courts = parseCourts(lines[i + j]);
+    }
+    const key = `${date}_${tr ? tr.startMin : ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.sessions.push({ date, startMin: tr ? tr.startMin : 9 * 60, duration: tr ? tr.duration : 120, courts: courts || 1 });
+  }
+  return out;
+}
+
+const DURATION_OPTS = [60, 90, 120, 150, 180, 210, 240, 270, 300];
+function applyParsedToForm(p) {
+  if (p.schoolName) document.querySelector("#school-name").value = p.schoolName;
+  if (p.contactName) document.querySelector("#school-contact").value = p.contactName;
+  if (p.email) document.querySelector("#school-email").value = p.email;
+  if (p.phone) document.querySelector("#school-phone").value = p.phone;
+  if (p.reference) document.querySelector("#school-reference").value = p.reference;
+  if (p.sessions.length) {
+    sessionRows.innerHTML = "";
+    p.sessions.forEach((s) => {
+      addSessionRow(s.date);
+      const row = sessionRows.lastElementChild;
+      row.querySelector(".s-date").value = s.date;
+      const timeStr = timeFromMinutes(s.startMin);
+      const timeSel = row.querySelector(".s-time");
+      if (!Array.from(timeSel.options).some((o) => o.value === timeStr)) {
+        timeSel.insertAdjacentHTML("beforeend", `<option value="${timeStr}">${displayTime(timeStr)}</option>`);
+      }
+      timeSel.value = timeStr;
+      const dur = DURATION_OPTS.reduce((a, b) => (Math.abs(b - s.duration) < Math.abs(a - s.duration) ? b : a), 120);
+      row.querySelector(".s-duration").value = String(dur);
+      row.querySelector(".s-courts").value = String(s.courts);
+      row.querySelector(".s-rate").value = schoolRate(timeStr);
+    });
+  }
+  refreshSchoolCalc();
+  return p.sessions.length;
 }
 
 function showSchoolEmail(p, sessions) {
@@ -816,7 +993,7 @@ function emailForSchool(id) {
       const rate = hours > 0 ? Math.round((perCourt / hours) * 100) / 100 : 0;
       return { date: b.date, time: b.time, duration: b.duration, courts: b.courts, rate };
     });
-  showSchoolEmail({ schoolName: h.school_name, contactName: h.contact_name, email: h.contact_email, phone: h.contact_phone, items: h.items || [] }, sessions);
+  showSchoolEmail({ schoolName: h.school_name, contactName: h.contact_name, email: h.contact_email, phone: h.contact_phone, reference: h.reference, items: h.items || [] }, sessions);
 }
 
 async function removeSchool(id) {
@@ -862,6 +1039,16 @@ function bindSchoolBookings() {
   document.querySelector("#new-school-btn").addEventListener("click", openSchoolModal);
   document.querySelector("#add-session-btn").addEventListener("click", () => addSessionRow());
   document.querySelector("#add-item-btn").addEventListener("click", () => addItemRow());
+
+  document.querySelector("#paste-fill-btn").addEventListener("click", () => {
+    const note = document.querySelector("#paste-note");
+    const text = document.querySelector("#paste-email").value;
+    if (!text.trim()) { note.textContent = t("Paste an email first."); return; }
+    const found = applyParsedToForm(parseBookingEmail(text));
+    note.textContent = isChinese()
+      ? `已识别 ${found} 个场次，请核对并修改。`
+      : `Filled in ${found} session(s) — please review and adjust.`;
+  });
   document.querySelector("#close-school-modal").addEventListener("click", closeSchoolModal);
   document.querySelector("#school-modal-backdrop").addEventListener("click", closeSchoolModal);
   document.querySelector("#close-email-modal").addEventListener("click", closeEmailModal);
@@ -902,6 +1089,7 @@ function bindSchoolBookings() {
       contactName: document.querySelector("#school-contact").value.trim(),
       email: document.querySelector("#school-email").value.trim(),
       phone: document.querySelector("#school-phone").value.trim(),
+      reference: document.querySelector("#school-reference").value.trim(),
       notes: document.querySelector("#school-notes").value.trim(),
       quoteCents: Math.round(Number(schoolQuote.value || 0) * 100),
       items: readItems(),

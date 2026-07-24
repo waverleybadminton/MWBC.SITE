@@ -1533,6 +1533,13 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .email-body { width: 100%; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.82rem; line-height: 1.5; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 0.8rem; resize: vertical; background: var(--paper); color: var(--ink); }
 .email-actions { align-items: center; }
 
+.paste-fill { border: 1px dashed var(--line); border-radius: var(--radius-m); padding: 0.6rem 0.9rem; margin-bottom: 1rem; background: var(--paper); }
+.paste-fill > summary { cursor: pointer; font-weight: 700; font-size: 0.9rem; color: var(--blue-deep); list-style: none; }
+.paste-fill > summary::-webkit-details-marker { display: none; }
+.paste-fill > summary::before { content: "📋 "; }
+.paste-fill[open] > summary { margin-bottom: 0.5rem; }
+.paste-email { width: 100%; font-size: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 0.7rem; resize: vertical; }
+
 @media (max-width: 620px) {
   .session-row, .item-row { grid-template-columns: 1fr 1fr; }
   .s-avail, .s-remove { align-self: start; }
