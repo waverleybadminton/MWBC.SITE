@@ -9,7 +9,6 @@ const bookingCount = document.querySelector("#admin-booking-count");
 const revenue = document.querySelector("#admin-revenue");
 const utilisation = document.querySelector("#admin-utilisation");
 const bookingRows = document.querySelector("#admin-bookings");
-const clearButton = document.querySelector("#clear-bookings");
 const schedule = document.querySelector("#court-schedule");
 const adminDate = document.querySelector("#admin-date");
 const dayTabs = document.querySelector("#day-tabs");
@@ -30,6 +29,13 @@ const loginNote = document.querySelector("#admin-login-note");
 const adminDashboard = document.querySelector("#admin-dashboard");
 const logoutButton = document.querySelector("#admin-logout");
 const newBookingButton = document.querySelector("#new-booking-btn");
+const todayButton = document.querySelector("#today-btn");
+const listPrevButton = document.querySelector("#list-prev-day");
+const listNextButton = document.querySelector("#list-next-day");
+const bookingsListTitle = document.querySelector("#bookings-list-title");
+const bookingsListShell = document.querySelector("#bookings-list");
+let listScope = "day";        // "day" | "all"
+let lastScrolledDate = null;  // so we only auto-scroll when the day changes
 const manualModal = document.querySelector("#manual-modal");
 const closeManualModalButton = document.querySelector("#close-manual-modal");
 const manualModalBackdrop = document.querySelector("#manual-modal-backdrop");
@@ -343,9 +349,16 @@ function renderSchedule() {
     schedule.append(header);
   });
 
+  const nowMinutes = adminDate.value === isoToday()
+    ? new Date().getHours() * 60 + new Date().getMinutes()
+    : -1;
+
   times.forEach((time, timeIndex) => {
+    const slotStart = minutesFromTime(time);
+    const isNow = nowMinutes >= slotStart && nowMinutes < slotStart + 30;
+
     const label = document.createElement("div");
-    label.className = "time-label" + (time.endsWith(":00") ? " hour" : "");
+    label.className = "time-label" + (time.endsWith(":00") ? " hour" : "") + (isNow ? " is-now" : "");
     label.textContent = displayTime(time);
     label.style.gridColumn = "1";
     label.style.gridRow = `${timeIndex + 2}`;
@@ -355,7 +368,7 @@ function renderSchedule() {
       const cell = document.createElement("button");
       const occupied = isCourtOccupied(bookings, court, time);
       cell.type = "button";
-      cell.className = "schedule-cell" + (time.endsWith(":00") ? " hour-line" : "");
+      cell.className = "schedule-cell" + (time.endsWith(":00") ? " hour-line" : "") + (isNow ? " is-now" : "");
       cell.dataset.court = court;
       cell.dataset.time = time;
       cell.style.gridColumn = `${courtIndex + 2}`;
@@ -392,26 +405,86 @@ function renderSchedule() {
       schedule.append(block);
     });
   });
+
+  maybeAutoScroll();
+}
+
+/* ---------- keeping the useful hours in view ---------- */
+
+// Scroll the board so `minutes` sits just under the sticky court headers.
+function scrollScheduleTo(minutes) {
+  const box = document.querySelector(".schedule-scroll");
+  if (!box || !schedule) return;
+  const times = getScheduleTimes();
+  let idx = times.findIndex((t) => minutesFromTime(t) >= minutes);
+  if (idx < 0) idx = times.length - 1;
+  const labels = schedule.querySelectorAll(".time-label");
+  const target = labels[Math.max(0, idx)];
+  if (!target) return;
+  const headerH = schedule.querySelector(".court-header")?.offsetHeight || 0;
+  box.scrollTop = Math.max(0, target.offsetTop - headerH - 4);
+}
+
+// Land on the part of the day that matters: now (today) or the first booking.
+function autoScrollSchedule() {
+  if (adminDate.value === isoToday()) {
+    const now = new Date();
+    scrollScheduleTo(now.getHours() * 60 + now.getMinutes() - 30);
+    return;
+  }
+  const dayBookings = selectedDateBookings();
+  const first = dayBookings.length
+    ? Math.min(...dayBookings.map((b) => minutesFromTime(b.time)))
+    : 16 * 60;
+  scrollScheduleTo(first - 30);
+}
+
+function maybeAutoScroll() {
+  if (lastScrolledDate === adminDate.value) return;
+  window.requestAnimationFrame(() => {
+    const box = document.querySelector(".schedule-scroll");
+    // Board not on screen yet (e.g. still logging in) — leave it for the next render.
+    if (!box || box.clientHeight === 0) return;
+    lastScrolledDate = adminDate.value;
+    autoScrollSchedule();
+  });
+}
+
+function upcomingBookings() {
+  const today = isoToday();
+  return readBookings()
+    .filter((b) => b.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date) || minutesFromTime(a.time) - minutesFromTime(b.time));
 }
 
 function renderBookings() {
-  const bookings = selectedDateBookings();
+  const dayBookings = selectedDateBookings();
+  // Metrics always describe the selected day, whatever the list is showing.
   const totalMinutes = courts.length * (closeHour - openingHour(adminDate.value)) * 60;
-  const bookedMinutes = bookings.reduce((sum, booking) => {
+  const bookedMinutes = dayBookings.reduce((sum, booking) => {
     return sum + Number(booking.duration || 0) * Math.max(1, bookingCourts(booking).length);
   }, 0);
-  bookingCount.textContent = bookings.length;
-  revenue.textContent = `$${bookings.reduce((sum, booking) => sum + Number(booking.price || 0), 0)}`;
+  bookingCount.textContent = dayBookings.length;
+  revenue.textContent = `$${dayBookings.reduce((sum, booking) => sum + Number(booking.price || 0), 0)}`;
   utilisation.textContent = `${Math.round((bookedMinutes / totalMinutes) * 100)}%`;
-  selectedDayLabel.textContent = displayDate(adminDate.value);
+  selectedDayLabel.textContent = adminDate.value === isoToday()
+    ? `${t("Today")} · ${displayDate(adminDate.value, { short: true })}`
+    : displayDate(adminDate.value);
   selectedDaySubtitle.textContent = isChinese()
-    ? `共 14 片场地，${bookings.length} 个预订`
-    : `${bookings.length} bookings across 14 courts`;
+    ? `共 14 片场地，${dayBookings.length} 个预订`
+    : `${dayBookings.length} booking${dayBookings.length === 1 ? "" : "s"} across 14 courts`;
+
+  const bookings = listScope === "all" ? upcomingBookings() : dayBookings;
+  if (bookingsListTitle) {
+    bookingsListTitle.textContent = listScope === "all" ? t("All upcoming bookings") : t("Bookings");
+  }
 
   bookingRows.innerHTML = "";
   if (!bookings.length) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="8">${t("No bookings for this day yet. Click any empty slot above to add one.")}</td>`;
+    row.innerHTML = `<td colspan="9">${listScope === "all"
+      ? t("No upcoming bookings.")
+      : t("No bookings for this day yet. Click any empty slot above to add one.")}</td>`;
     bookingRows.append(row);
     return;
   }
@@ -422,6 +495,7 @@ function renderBookings() {
       : (booking.source === "Phone" || booking.source === "Manual" ? "src-phone" : "src-online");
     const paidClass = booking.status === "Paid" ? "pill-paid" : "pill-unpaid";
     row.innerHTML = `
+      <td class="col-date">${displayDate(booking.date, { short: true })}</td>
       <td>${escapeHtml(booking.name)}</td>
       <td>${escapeHtml(booking.phone || booking.email || "")}</td>
       <td>${isChinese() ? `${displayTime(booking.time)}，${booking.duration} 分钟` : `${displayTime(booking.time)} for ${booking.duration} min`}</td>
@@ -1170,16 +1244,40 @@ window.addEventListener("mwbc-auth-changed", (event) => {
   setAdminState(!!event.detail?.authed);
 });
 
-document.querySelector("#prev-day").addEventListener("click", () => {
-  adminDate.value = addDays(adminDate.value, -1);
+function goToDate(date) {
+  adminDate.value = date;
   closeManualModal();
   renderAll();
+}
+
+document.querySelector("#prev-day").addEventListener("click", () => goToDate(addDays(adminDate.value, -1)));
+document.querySelector("#next-day").addEventListener("click", () => goToDate(addDays(adminDate.value, 1)));
+todayButton?.addEventListener("click", () => goToDate(isoToday()));
+
+// The bookings list gets its own day stepper, so you never scroll back up.
+listPrevButton?.addEventListener("click", () => goToDate(addDays(adminDate.value, -1)));
+listNextButton?.addEventListener("click", () => goToDate(addDays(adminDate.value, 1)));
+
+document.querySelectorAll(".list-scope [data-scope]").forEach((button) => {
+  button.addEventListener("click", () => {
+    listScope = button.dataset.scope;
+    document.querySelectorAll(".list-scope [data-scope]").forEach((b) => b.classList.toggle("active", b === button));
+    bookingsListShell?.classList.toggle("scope-day", listScope === "day");
+    renderBookings();
+  });
 });
 
-document.querySelector("#next-day").addEventListener("click", () => {
-  adminDate.value = addDays(adminDate.value, 1);
-  closeManualModal();
-  renderAll();
+document.querySelectorAll(".time-jump [data-jump]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const now = new Date();
+    const target = {
+      now: now.getHours() * 60 + now.getMinutes() - 30,
+      morning: 8 * 60,
+      afternoon: 12 * 60,
+      evening: 17 * 60
+    }[button.dataset.jump];
+    scrollScheduleTo(target);
+  });
 });
 
 adminDate.addEventListener("change", () => {
@@ -1196,12 +1294,6 @@ document.addEventListener("keydown", (event) => {
   if (!manualModal.hidden) closeManualModal();
   if (schoolModal && !schoolModal.hidden) closeSchoolModal();
   if (emailModal && !emailModal.hidden) closeEmailModal();
-});
-
-clearButton.addEventListener("click", () => {
-  if (!window.confirm(t("Clear all demo bookings? This cannot be undone."))) return;
-  writeBookings([]);
-  renderAll();
 });
 
 window.addEventListener("mwbc-bookings-updated", () => {

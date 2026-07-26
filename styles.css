@@ -1350,12 +1350,49 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
   box-shadow: var(--shadow-s);
 }
 
-.schedule-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 1rem; margin-bottom: 1rem; }
-.schedule-toolbar h2 { margin-bottom: 0.3rem; }
-.schedule-help { margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
+.schedule-help { margin: 0.6rem 0 0.5rem; font-size: 0.84rem; color: var(--ink-soft); }
 
-.date-controls { display: flex; align-items: center; gap: 0.5rem; }
-.date-controls input { min-height: 44px; width: auto; }
+/* Compact top line — title + key numbers on one row. */
+.admin-topline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.admin-topline-title h1 { font-size: clamp(1.3rem, 3vw, 1.7rem); margin: 0; }
+.admin-topline-title .kicker { margin: 0 0 0.1rem; }
+.admin-topline-stats { display: flex; gap: 1.4rem; margin: 0; }
+.admin-topline-stats div { text-align: right; }
+.admin-topline-stats dt { font-size: 0.64rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); font-weight: 700; }
+.admin-topline-stats dd { margin: 0; font-size: 1.2rem; font-weight: 800; color: var(--blue-deep); }
+
+/* Sticky command bar — day switching + actions reachable from anywhere. */
+.board-bar {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 30;
+  background: var(--card);
+  border-bottom: 2px solid var(--line);
+  padding: 0.7rem 0 0.55rem;
+  margin-bottom: 0.2rem;
+}
+.board-bar-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.7rem; }
+.board-bar-sub { margin-top: 0.55rem; }
+.date-nav { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.date-current { min-width: 10.5rem; }
+.date-current strong { display: block; font-size: 1.06rem; line-height: 1.2; color: var(--navy-900); }
+.date-current span { font-size: 0.76rem; color: var(--ink-soft); }
+.date-nav input[type="date"] { min-height: 40px; width: auto; }
+.board-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.time-jump { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.time-jump button {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-soft);
+  border-radius: var(--radius-pill);
+  padding: 0.3rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-height: 34px;
+  cursor: pointer;
+}
+.time-jump button:hover { border-color: var(--navy-900); color: var(--navy-900); }
 
 .day-tabs { display: flex; flex-wrap: nowrap; gap: 0.45rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
 .day-tabs button { flex: 0 0 auto; white-space: nowrap; }
@@ -1376,9 +1413,12 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .day-tabs button:hover { border-color: var(--navy-900); color: var(--navy-900); }
 .day-tabs button.active { background: var(--navy-900); border-color: var(--navy-900); color: #fff; }
 
-.schedule-title-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 0.9rem; }
-.schedule-title-row strong { display: block; font-size: 1.02rem; }
-.schedule-title-row span { font-size: 0.85rem; color: var(--ink-soft); }
+/* Bookings list header: scope toggle + its own day stepper. */
+.list-title { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.list-scope { display: flex; gap: 0.35rem; }
+.list-scope .chip { min-height: 34px; padding: 0.28rem 0.8rem; font-size: 0.8rem; }
+.list-date-nav { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; }
+#bookings-list.scope-day .col-date { display: none; }
 
 .schedule-legend { display: flex; flex-wrap: wrap; gap: 0.8rem; font-size: 0.76rem; color: var(--ink-soft); }
 .schedule-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
@@ -1388,34 +1428,24 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .legend-phone { background: var(--green); }
 .legend-unpaid { background: #f2b134; }
 
-.admin-selection {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.9rem;
-  border: 1px solid rgba(13, 78, 160, 0.4);
-  background: rgba(13, 78, 160, 0.06);
-  border-radius: var(--radius-m);
-  padding: 0.9rem 1.1rem;
-  margin-bottom: 1rem;
-}
-
-.admin-selection span { display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--blue); }
-.admin-selection strong { display: block; font-size: 0.97rem; }
-.admin-selection small { color: var(--ink-soft); font-size: 0.82rem; }
-.admin-selection-actions { display: flex; gap: 0.5rem; }
 
 /* Contained, scrollable board so it fits the page; sticky court headers (top)
    and time labels (left) stay visible while scrolling. */
 .schedule-scroll {
+  position: relative;
   overflow: auto;
-  max-height: 72vh;
+  max-height: calc(100vh - 260px);
+  min-height: 380px;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--line-soft);
   -webkit-overflow-scrolling: touch;
 }
+
+/* Current half-hour, so "now" is unmistakable on today's board. */
+.time-label.is-now { background: #f2b134; color: #071626; font-weight: 800; }
+.schedule-cell.is-now { background: rgba(242, 177, 52, 0.14); }
+.schedule-cell.is-now:hover:not([disabled]) { background: rgba(242, 177, 52, 0.3); }
 
 .court-schedule {
   display: grid;

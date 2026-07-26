@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y39">
+    <link rel="stylesheet" href="./styles.css?v=y41">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -715,71 +715,55 @@
         </section>
 
         <section class="admin-main section light" id="admin-dashboard" hidden>
-          <section class="admin-hero">
-            <div>
+          <section class="admin-topline">
+            <div class="admin-topline-title">
               <p class="kicker">Operations</p>
-              <h1>Daily court schedule</h1>
-              <p>See every court at a glance, add phone bookings, and keep online and manual reservations in one place.</p>
+              <h1>Court board</h1>
             </div>
+            <dl class="admin-topline-stats" aria-label="Booking metrics">
+              <div><dt>Bookings</dt><dd id="admin-booking-count">0</dd></div>
+              <div><dt>Revenue</dt><dd id="admin-revenue">$0</dd></div>
+              <div><dt>Used</dt><dd id="admin-utilisation">0%</dd></div>
+            </dl>
             <button class="btn btn-ghost-dark small-button" id="admin-logout" type="button">Log out</button>
           </section>
 
-          <section class="admin-metrics" aria-label="Booking metrics">
-            <article>
-              <span>Bookings</span>
-              <strong id="admin-booking-count">0</strong>
-            </article>
-            <article>
-              <span>Revenue</span>
-              <strong id="admin-revenue">$0</strong>
-            </article>
-            <article>
-              <span>Average utilisation</span>
-              <strong id="admin-utilisation">0%</strong>
-            </article>
-            <article>
-              <span>Refund queue</span>
-              <strong>0</strong>
-            </article>
-          </section>
-
-          <section class="scheduler-panel" aria-labelledby="schedule-title">
-            <div class="schedule-toolbar">
-              <div>
-                <p class="kicker">Badminton</p>
-                <h2 id="schedule-title">Court board</h2>
-                <p class="schedule-help">Click any empty slot to add a booking. Click a booking to edit, cancel or refund it.</p>
+          <section class="scheduler-panel" aria-label="Court board">
+            <!-- Sticky command bar: change the day and add bookings from anywhere. -->
+            <div class="board-bar">
+              <div class="board-bar-row">
+                <div class="date-nav">
+                  <button class="date-arrow" id="prev-day" type="button" aria-label="Previous day">‹</button>
+                  <div class="date-current">
+                    <strong id="selected-day-label">Today</strong>
+                    <span id="selected-day-subtitle">Court schedule</span>
+                  </div>
+                  <button class="date-arrow" id="next-day" type="button" aria-label="Next day">›</button>
+                  <button class="btn btn-ghost-dark small-button" id="today-btn" type="button">Today</button>
+                  <input id="admin-date" type="date" aria-label="Pick a date">
+                </div>
+                <div class="board-actions">
+                  <button class="btn btn-book small-button" id="new-booking-btn" type="button">+ New booking</button>
+                  <button class="btn btn-enquire small-button" id="new-school-btn" type="button">+ School booking</button>
+                </div>
               </div>
-              <div class="date-controls" aria-label="Schedule date controls">
-                <button class="date-arrow" id="prev-day" type="button" aria-label="Previous day">‹</button>
-                <input id="admin-date" type="date">
-                <button class="date-arrow" id="next-day" type="button" aria-label="Next day">›</button>
-              </div>
-            </div>
-            <div class="day-tabs" id="day-tabs" aria-label="Quick date selection"></div>
-            <div class="schedule-title-row">
-              <div>
-                <strong id="selected-day-label">Today</strong>
-                <span id="selected-day-subtitle">Court schedule</span>
-              </div>
-              <div class="schedule-legend" aria-label="Booking colour legend">
-                <span><i class="legend-online"></i>Online</span>
-                <span><i class="legend-phone"></i>Booked by us</span>
-                <span><i class="legend-school"></i>School</span>
-                <span><i class="legend-unpaid"></i>Unpaid</span>
+              <div class="day-tabs" id="day-tabs" aria-label="Quick date selection"></div>
+              <div class="board-bar-row board-bar-sub">
+                <div class="time-jump" aria-label="Jump to time of day">
+                  <button type="button" data-jump="now">Now</button>
+                  <button type="button" data-jump="morning">Morning</button>
+                  <button type="button" data-jump="afternoon">Afternoon</button>
+                  <button type="button" data-jump="evening">Evening</button>
+                </div>
+                <div class="schedule-legend" aria-label="Booking colour legend">
+                  <span><i class="legend-online"></i>Online</span>
+                  <span><i class="legend-phone"></i>Booked by us</span>
+                  <span><i class="legend-school"></i>School</span>
+                  <span><i class="legend-unpaid"></i>Unpaid</span>
+                </div>
               </div>
             </div>
-            <div class="admin-selection" id="admin-selection">
-              <div>
-                <span>Add a booking</span>
-                <strong>Click any empty slot on the board</strong>
-                <small>Pick a court and time, set the details, and confirm.</small>
-              </div>
-              <div class="admin-selection-actions">
-                <button class="btn btn-book small-button" id="new-booking-btn" type="button">+ New booking</button>
-                <button class="btn btn-enquire small-button" id="new-school-btn" type="button">+ School booking</button>
-              </div>
-            </div>
+            <p class="schedule-help">Click an empty slot to add a booking · click a booking to edit, cancel or refund.</p>
             <div class="schedule-scroll">
               <div class="court-schedule" id="court-schedule" aria-label="Court booking schedule"></div>
             </div>
@@ -954,15 +938,23 @@
               </div>
             </div>
 
-            <div class="admin-table-shell">
-              <div class="admin-section-title">
-                <h2>Bookings for selected day</h2>
-                <button class="btn btn-ghost-dark small-button" id="clear-bookings" type="button">Clear Demo Data</button>
+            <div class="admin-table-shell" id="bookings-list">
+              <div class="admin-section-title list-title">
+                <h2 id="bookings-list-title">Bookings</h2>
+                <div class="list-scope" role="group" aria-label="Which bookings to show">
+                  <button class="chip active" type="button" data-scope="day">This day</button>
+                  <button class="chip" type="button" data-scope="all">All upcoming</button>
+                </div>
+                <div class="list-date-nav">
+                  <button class="date-arrow" id="list-prev-day" type="button" aria-label="Previous day">‹</button>
+                  <button class="date-arrow" id="list-next-day" type="button" aria-label="Next day">›</button>
+                </div>
               </div>
               <div class="table-wrap">
                 <table>
                   <thead>
                     <tr>
+                      <th class="col-date">Date</th>
                       <th>Customer</th>
                       <th>Contact details</th>
                       <th>Time</th>
@@ -1036,12 +1028,12 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y39"></script>
-    <script src="./mwbc-scheduler.js?v=y39"></script>
-    <script src="./supabase-client.js?v=y39"></script>
-    <script src="./store.js?v=y39"></script>
-    <script src="./main.js?v=y39"></script>
-    <script src="./app.js?v=y39"></script>
-    <script src="./admin.js?v=y39"></script>
+    <script src="./i18n.js?v=y41"></script>
+    <script src="./mwbc-scheduler.js?v=y41"></script>
+    <script src="./supabase-client.js?v=y41"></script>
+    <script src="./store.js?v=y41"></script>
+    <script src="./main.js?v=y41"></script>
+    <script src="./app.js?v=y41"></script>
+    <script src="./admin.js?v=y41"></script>
   </body>
 </html>
