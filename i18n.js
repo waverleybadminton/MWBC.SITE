@@ -395,6 +395,7 @@
     "Sessions": "场次",
     "+ Add session": "+ 添加场次",
     "Courts": "场地数",
+    "$/court": "每场价格（$）",
     "$/court/hr": "每场每小时（$）",
     "Item": "项目",
     "Amount": "金额",

@@ -680,8 +680,20 @@ function schoolPool() {
 // School court-hire rates (per hour, per court): off-peak $24, peak (5pm+) $34.
 const SCHOOL_RATE_OFFPEAK = 24;
 const SCHOOL_RATE_PEAK = 34;
-function schoolRate(time) {
-  return minutesFromTime(time) >= 17 * 60 ? SCHOOL_RATE_PEAK : SCHOOL_RATE_OFFPEAK;
+// Per-court price for a session, summed over 30-min segments at the off-peak
+// ($24) / peak ($34, from 5pm) rate — so a session that straddles 5pm is priced
+// correctly and automatically (e.g. 4–6pm = 1h@$24 + 1h@$34 = $58/court).
+function schoolPerCourtCents(date, startMin, durationMin) {
+  let total = 0;
+  for (let offset = 0; offset < durationMin; offset += 30) {
+    const seg = Math.min(30, durationMin - offset);
+    const rate = (startMin + offset) >= 17 * 60 ? SCHOOL_RATE_PEAK : SCHOOL_RATE_OFFPEAK;
+    total += rate * (seg / 60);
+  }
+  return Math.round(total * 100);
+}
+function defaultPerCourt(date, time, duration) {
+  return schoolPerCourtCents(date, minutesFromTime(time), Number(duration)) / 100;
 }
 
 function durationOptionsHTML(selected) {
@@ -704,19 +716,23 @@ function addSessionRow(date) {
     <label>${t("Start time")}<select class="s-time">${timeOptionsHTML("09:00")}</select></label>
     <label>${t("Duration")}<select class="s-duration">${durationOptionsHTML(120)}</select></label>
     <label>${t("Courts")}<input type="number" class="s-courts" min="1" max="14" value="14"></label>
-    <label>${t("$/court/hr")}<input type="number" class="s-rate" min="0" step="1" value="${SCHOOL_RATE_OFFPEAK}"></label>
+    <label>${t("$/court")}<input type="number" class="s-percourt" min="0" step="0.01"></label>
     <span class="s-avail"></span>
     <button type="button" class="s-remove" aria-label="${t("Remove")}">&times;</button>`;
   const dateInput = row.querySelector(".s-date");
   dateInput.value = date || adminDate.value;
   dateInput.min = isoToday();
-  const rateInput = row.querySelector(".s-rate");
-  rateInput.value = schoolRate(row.querySelector(".s-time").value);
-  // Re-default the rate when the start time changes (unless staff typed one in).
-  row.querySelector(".s-time").addEventListener("change", (e) => {
-    if (rateInput.dataset.touched !== "1") rateInput.value = schoolRate(e.target.value);
-  });
-  rateInput.addEventListener("input", () => { rateInput.dataset.touched = "1"; });
+  const perCourt = row.querySelector(".s-percourt");
+  // Auto price from peak/off-peak segments, unless staff typed a custom amount.
+  const applyDefault = () => {
+    if (perCourt.dataset.touched === "1") return;
+    perCourt.value = defaultPerCourt(dateInput.value, row.querySelector(".s-time").value, row.querySelector(".s-duration").value);
+  };
+  applyDefault();
+  perCourt.addEventListener("input", () => { perCourt.dataset.touched = "1"; refreshSchoolCalc(); });
+  dateInput.addEventListener("change", applyDefault);
+  row.querySelector(".s-time").addEventListener("change", applyDefault);
+  row.querySelector(".s-duration").addEventListener("change", applyDefault);
   row.querySelectorAll("input, select").forEach((el) => el.addEventListener("change", refreshSchoolCalc));
   row.querySelector(".s-remove").addEventListener("click", () => { row.remove(); refreshSchoolCalc(); });
   sessionRows.append(row);
@@ -729,7 +745,7 @@ function readSessions() {
     time: row.querySelector(".s-time").value,
     duration: Number(row.querySelector(".s-duration").value),
     courtsWanted: Math.max(1, Math.min(courts.length, Number(row.querySelector(".s-courts").value) || 1)),
-    rate: Math.max(0, Number(row.querySelector(".s-rate").value) || 0),
+    perCourtCents: Math.max(0, Math.round((Number(row.querySelector(".s-percourt").value) || 0) * 100)),
     row
   }));
 }
@@ -756,11 +772,6 @@ function readItems() {
   })).filter((it) => it.description || it.amountCents > 0);
 }
 
-// Per-court price for a session = rate x hours.
-function sessionPerCourtCents(s) {
-  return Math.round(s.rate * (s.duration / 60) * 100);
-}
-
 function refreshSchoolCalc() {
   let quoteAuto = 0;
   readSessions().forEach((s) => {
@@ -772,7 +783,7 @@ function refreshSchoolCalc() {
       ? (isChinese() ? `${free} 片空闲` : `${free} free`)
       : (isChinese() ? `仅 ${free} 片空闲` : `only ${free} free`);
     avail.className = "s-avail " + (ok ? "ok" : "short");
-    quoteAuto += sessionPerCourtCents(s) / 100 * s.courtsWanted;
+    quoteAuto += s.perCourtCents / 100 * s.courtsWanted;
   });
   readItems().forEach((it) => { quoteAuto += it.amountCents / 100; });
   if (schoolQuote.dataset.touched !== "1") schoolQuote.value = Math.round(quoteAuto * 100) / 100;
@@ -826,11 +837,10 @@ async function openSchoolEditModal(id) {
     timeSel.value = b.time;
     row.querySelector(".s-duration").value = String(b.duration);
     row.querySelector(".s-courts").value = String(b.courtCount);
-    const hours = b.duration / 60;
-    const rate = b.courtCount && hours > 0 ? (b.price / b.courtCount) / hours : 0;
-    const rateInput = row.querySelector(".s-rate");
-    rateInput.value = Math.round(rate * 100) / 100;
-    rateInput.dataset.touched = "1";
+    // Preserve the stored per-court price (b.price = per-court × courts).
+    const perCourt = row.querySelector(".s-percourt");
+    perCourt.value = b.courtCount ? Math.round((b.price / b.courtCount) * 100) / 100 : b.price;
+    perCourt.dataset.touched = "1";
   });
   if (!sessions.length) addSessionRow(adminDate.value);
   (h.items || []).forEach((it) => addItemRow(it.description, Number(it.amountCents || 0) / 100));
@@ -928,12 +938,14 @@ function guessYear(mo, d) {
 }
 
 function parseDate(str) {
-  let m = str.match(/\b(\d{1,2})\s+([A-Za-z]{3,9})\.?\s*(\d{4})?/);
+  // "30 July 2026" / "30th July" / "30 Jul"
+  let m = str.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?\s*,?\s*(\d{4})?/);
   if (m && MONTHS[m[2].toLowerCase()]) {
     const d = +m[1], mo = MONTHS[m[2].toLowerCase()], y = m[3] ? +m[3] : guessYear(mo, d);
     if (d >= 1 && d <= 31) return `${y}-${pad2(mo)}-${pad2(d)}`;
   }
-  m = str.match(/\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:,)?\s*(\d{4})?/);
+  // "July 30th, 2026" / "Jul 30"
+  m = str.match(/\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,)?\s*(\d{4})?/);
   if (m && MONTHS[m[1].toLowerCase()]) {
     const mo = MONTHS[m[1].toLowerCase()], d = +m[2], y = m[3] ? +m[3] : guessYear(mo, d);
     if (d >= 1 && d <= 31) return `${y}-${pad2(mo)}-${pad2(d)}`;
@@ -963,7 +975,9 @@ function parseTimeRange(str) {
 }
 
 function parseCourts(str) {
-  const m = str.match(/(\d{1,2})\s*courts?\b/i) || str.match(/\bcourts?\s*[:\-]?\s*(\d{1,2})/i);
+  const m = str.match(/(\d{1,2})\s*(?:x\s*)?courts?\b/i)     // "8 courts", "8 x courts"
+    || str.match(/\bcourts?\s*[:\-x]?\s*(\d{1,2})/i)          // "courts: 8", "court x8"
+    || str.match(/(\d{1,2})\s*(?:×|x)\s*court/i);
   if (m) { const n = +m[1]; if (n >= 1 && n <= 14) return n; }
   return null;
 }
@@ -981,20 +995,27 @@ function parseBookingEmail(text) {
     .filter((p) => !OUR_PHONE_DIGITS.includes(digitsOnly(p).replace(/^61/, "0")));
   if (phones.length) out.phone = phones[0];
 
-  let m = text.match(/School\s*(?:name)?\s*[:\-]\s*(.+)/i);
-  if (m) out.schoolName = m[1].trim().replace(/[.;,]\s*$/, "");
+  const cleanName = (s) => s.trim().replace(/^(?:for|from|at|the)\s+/i, "").replace(/['".;,\s]+$/, "");
+  let m = text.match(/School\s*(?:\/\s*group)?\s*(?:name)?\s*[:\-]\s*(.+)/i);
+  if (m) out.schoolName = cleanName(m[1]);
+  if (!out.schoolName) {
+    // A proper-noun phrase ending in a school-type word, even mid-sentence
+    // (e.g. "…book courts for Carey Baptist Grammar School.").
+    m = text.match(/([A-Z][A-Za-z'&.\-]+(?:\s+(?:[A-Z][A-Za-z'&.\-]+|of|the|and)){0,6}\s+(?:Grammar School|Primary School|Secondary College|High School|College|Grammar|School|Academy|University|Institute))\b/);
+    if (m) out.schoolName = cleanName(m[1]);
+  }
   if (!out.schoolName) {
     const kw = /(College|Grammar|Primary School|Secondary College|High School|\bSchool\b|Academy|University|Club)/i;
     const cand = lines.find((l) => kw.test(l) && l.trim().length < 60 && !/rate|court|booking|venue|website|email|phone|www\./i.test(l));
-    if (cand) out.schoolName = cand.trim().replace(/[.;,]\s*$/, "");
+    if (cand) out.schoolName = cleanName(cand);
   }
 
   m = text.match(/(?:booking\s*)?reference\s*[:\-]\s*([A-Za-z0-9\-\/]+)/i) || text.match(/\b(?:PO|P\.O\.)\s*(?:number|no\.?|#)?\s*[:#]?\s*([A-Za-z0-9\-\/]{3,})/i);
   if (m) out.reference = m[1].trim();
 
   let name = null;
-  m = text.match(/\b(?:kind\s+regards|regards|thanks|thank you|cheers|sincerely|best|yours)\s*,?\s*\n+\s*([A-Z][A-Za-z'\-]+(?:\s+[A-Z][A-Za-z'\-]+)?)/i);
-  if (m && m[1].toUpperCase() !== "MWBC") name = m[1];
+  m = text.match(/\b(?:kind\s+regards|warm\s+regards|regards|many\s+thanks|thanks|thank you|cheers|sincerely|best|yours(?:\s+sincerely)?)\b[,:]?\s*\n?\s*([A-Z][A-Za-z'\-]+(?:\s+[A-Z][A-Za-z'\-]+)?)/i);
+  if (m && m[1].toUpperCase() !== "MWBC" && !/^(For|The|To|Hi|Hello|We|I|You|Please)$/i.test(m[1])) name = m[1];
   if (!name) { m = text.match(/\bmy name is\s+([A-Z][A-Za-z'\-]+(?:\s+[A-Z][A-Za-z'\-]+)?)/i); if (m) name = m[1]; }
   if (!name) { m = text.match(/\bDear\s+([A-Z][A-Za-z'\-]+)/); if (m && m[1].toUpperCase() !== "MWBC") name = m[1]; }
   if (name) out.contactName = name.trim();
@@ -1017,13 +1038,34 @@ function parseBookingEmail(text) {
   return out;
 }
 
+// Build a readable booking reference, e.g. "MLC-2026-0730".
+function initialsFrom(name) {
+  const skip = new Set(["the", "of", "and", "for", "at", "a"]);
+  const words = String(name || "").replace(/[^A-Za-z\s'&-]/g, " ").split(/\s+/).filter(Boolean);
+  const init = words.filter((w) => !skip.has(w.toLowerCase())).map((w) => w[0].toUpperCase()).join("");
+  return (init || "GRP").slice(0, 5);
+}
+function autoReference(schoolName, sessions) {
+  const init = initialsFrom(schoolName);
+  const dates = (sessions || []).map((s) => s.date).filter(Boolean).sort();
+  let year = new Date().getFullYear();
+  let md;
+  if (dates.length) { const [y, m, d] = dates[0].split("-"); year = +y; md = `${m}${d}`; }
+  else { const n = new Date(); md = `${pad2(n.getMonth() + 1)}${pad2(n.getDate())}`; }
+  return `${init}-${year}-${md}`;
+}
+
 const DURATION_OPTS = [60, 90, 120, 150, 180, 210, 240, 270, 300];
 function applyParsedToForm(p) {
   if (p.schoolName) document.querySelector("#school-name").value = p.schoolName;
   if (p.contactName) document.querySelector("#school-contact").value = p.contactName;
   if (p.email) document.querySelector("#school-email").value = p.email;
   if (p.phone) document.querySelector("#school-phone").value = p.phone;
-  if (p.reference) document.querySelector("#school-reference").value = p.reference;
+  const refField = document.querySelector("#school-reference");
+  if (p.reference) refField.value = p.reference;
+  else if (!refField.value.trim() && (p.schoolName || p.sessions.length)) {
+    refField.value = autoReference(p.schoolName || document.querySelector("#school-name").value, p.sessions);
+  }
   if (p.sessions.length) {
     sessionRows.innerHTML = "";
     p.sessions.forEach((s) => {
@@ -1039,7 +1081,8 @@ function applyParsedToForm(p) {
       const dur = DURATION_OPTS.reduce((a, b) => (Math.abs(b - s.duration) < Math.abs(a - s.duration) ? b : a), 120);
       row.querySelector(".s-duration").value = String(dur);
       row.querySelector(".s-courts").value = String(s.courts);
-      row.querySelector(".s-rate").value = schoolRate(timeStr);
+      // Auto per-court price from peak/off-peak segments for the parsed time.
+      row.querySelector(".s-percourt").value = defaultPerCourt(s.date, timeStr, dur);
     });
   }
   refreshSchoolCalc();
@@ -1152,18 +1195,22 @@ function bindSchoolBookings() {
           : `${displayDate(s.date)} ${displayTime(s.time)}: only ${got.length} court(s) free — clear other bookings first.`;
         return;
       }
-      allocated.push({ date: s.date, time: s.time, duration: s.duration, courts: got, rate: s.rate, perCourtCents: sessionPerCourtCents(s) });
+      allocated.push({ date: s.date, time: s.time, duration: s.duration, courts: got, perCourtCents: s.perCourtCents });
     }
 
     const submitBtn = schoolForm.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     schoolNote.textContent = t("Saving…");
+    const schoolName = document.querySelector("#school-name").value.trim();
+    // Auto-assign a booking reference if staff didn't set one, and reflect it in the field.
+    let reference = document.querySelector("#school-reference").value.trim();
+    if (!reference) { reference = autoReference(schoolName, allocated); document.querySelector("#school-reference").value = reference; }
     const payload = {
-      schoolName: document.querySelector("#school-name").value.trim(),
+      schoolName,
       contactName: document.querySelector("#school-contact").value.trim(),
       email: document.querySelector("#school-email").value.trim(),
       phone: document.querySelector("#school-phone").value.trim(),
-      reference: document.querySelector("#school-reference").value.trim(),
+      reference,
       notes: document.querySelector("#school-notes").value.trim(),
       quoteCents: Math.round(Number(schoolQuote.value || 0) * 100),
       items: readItems(),
