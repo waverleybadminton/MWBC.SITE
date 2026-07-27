@@ -692,9 +692,6 @@ function schoolPerCourtCents(date, startMin, durationMin) {
   }
   return Math.round(total * 100);
 }
-function defaultPerCourt(date, time, duration) {
-  return schoolPerCourtCents(date, minutesFromTime(time), Number(duration)) / 100;
-}
 
 function durationOptionsHTML(selected) {
   return [60, 90, 120, 150, 180, 210, 240, 270, 300]
@@ -716,23 +713,12 @@ function addSessionRow(date) {
     <label>${t("Start time")}<select class="s-time">${timeOptionsHTML("09:00")}</select></label>
     <label>${t("Duration")}<select class="s-duration">${durationOptionsHTML(120)}</select></label>
     <label>${t("Courts")}<input type="number" class="s-courts" min="1" max="14" value="14"></label>
-    <label>${t("$/court")}<input type="number" class="s-percourt" min="0" step="0.01"></label>
+    <span class="s-price" aria-label="${t("Session price")}"></span>
     <span class="s-avail"></span>
     <button type="button" class="s-remove" aria-label="${t("Remove")}">&times;</button>`;
   const dateInput = row.querySelector(".s-date");
   dateInput.value = date || adminDate.value;
   dateInput.min = isoToday();
-  const perCourt = row.querySelector(".s-percourt");
-  // Auto price from peak/off-peak segments, unless staff typed a custom amount.
-  const applyDefault = () => {
-    if (perCourt.dataset.touched === "1") return;
-    perCourt.value = defaultPerCourt(dateInput.value, row.querySelector(".s-time").value, row.querySelector(".s-duration").value);
-  };
-  applyDefault();
-  perCourt.addEventListener("input", () => { perCourt.dataset.touched = "1"; refreshSchoolCalc(); });
-  dateInput.addEventListener("change", applyDefault);
-  row.querySelector(".s-time").addEventListener("change", applyDefault);
-  row.querySelector(".s-duration").addEventListener("change", applyDefault);
   row.querySelectorAll("input, select").forEach((el) => el.addEventListener("change", refreshSchoolCalc));
   row.querySelector(".s-remove").addEventListener("click", () => { row.remove(); refreshSchoolCalc(); });
   sessionRows.append(row);
@@ -745,8 +731,11 @@ function readSessions() {
     time: row.querySelector(".s-time").value,
     duration: Number(row.querySelector(".s-duration").value),
     courtsWanted: Math.max(1, Math.min(courts.length, Number(row.querySelector(".s-courts").value) || 1)),
-    perCourtCents: Math.max(0, Math.round((Number(row.querySelector(".s-percourt").value) || 0) * 100)),
     row
+  })).map((s) => ({
+    ...s,
+    // Price is always auto: peak/off-peak segments, no per-session override.
+    perCourtCents: s.date ? schoolPerCourtCents(s.date, minutesFromTime(s.time), s.duration) : 0
   }));
 }
 
@@ -783,7 +772,10 @@ function refreshSchoolCalc() {
       ? (isChinese() ? `${free} 片空闲` : `${free} free`)
       : (isChinese() ? `仅 ${free} 片空闲` : `only ${free} free`);
     avail.className = "s-avail " + (ok ? "ok" : "short");
-    quoteAuto += s.perCourtCents / 100 * s.courtsWanted;
+    const lineTotal = s.perCourtCents / 100 * s.courtsWanted;
+    const priceEl = s.row.querySelector(".s-price");
+    if (priceEl) priceEl.textContent = s.date ? `$${lineTotal.toFixed(2)}` : "";
+    quoteAuto += lineTotal;
   });
   readItems().forEach((it) => { quoteAuto += it.amountCents / 100; });
   if (schoolQuote.dataset.touched !== "1") schoolQuote.value = Math.round(quoteAuto * 100) / 100;
@@ -837,10 +829,6 @@ async function openSchoolEditModal(id) {
     timeSel.value = b.time;
     row.querySelector(".s-duration").value = String(b.duration);
     row.querySelector(".s-courts").value = String(b.courtCount);
-    // Preserve the stored per-court price (b.price = per-court × courts).
-    const perCourt = row.querySelector(".s-percourt");
-    perCourt.value = b.courtCount ? Math.round((b.price / b.courtCount) * 100) / 100 : b.price;
-    perCourt.dataset.touched = "1";
   });
   if (!sessions.length) addSessionRow(adminDate.value);
   (h.items || []).forEach((it) => addItemRow(it.description, Number(it.amountCents || 0) / 100));
@@ -1081,8 +1069,6 @@ function applyParsedToForm(p) {
       const dur = DURATION_OPTS.reduce((a, b) => (Math.abs(b - s.duration) < Math.abs(a - s.duration) ? b : a), 120);
       row.querySelector(".s-duration").value = String(dur);
       row.querySelector(".s-courts").value = String(s.courts);
-      // Auto per-court price from peak/off-peak segments for the parsed time.
-      row.querySelector(".s-percourt").value = defaultPerCourt(s.date, timeStr, dur);
     });
   }
   refreshSchoolCalc();
@@ -1157,14 +1143,28 @@ function bindSchoolBookings() {
   document.querySelector("#add-session-btn").addEventListener("click", () => addSessionRow());
   document.querySelector("#add-item-btn").addEventListener("click", () => addItemRow());
 
-  document.querySelector("#paste-fill-btn").addEventListener("click", () => {
+  document.querySelector("#paste-fill-btn").addEventListener("click", async () => {
     const note = document.querySelector("#paste-note");
+    const btn = document.querySelector("#paste-fill-btn");
     const text = document.querySelector("#paste-email").value;
     if (!text.trim()) { note.textContent = t("Paste an email first."); return; }
-    const found = applyParsedToForm(parseBookingEmail(text));
+
+    btn.disabled = true;
+    note.textContent = isChinese() ? "正在读取邮件…" : "Reading the email…";
+    // Try the AI parser first; fall back to the built-in pattern matcher.
+    let parsed = null;
+    if (window.MWBC_STORE && window.MWBC_STORE.parseEmail) {
+      try { parsed = await window.MWBC_STORE.parseEmail(text); } catch { parsed = null; }
+    }
+    const usedAi = !!parsed;
+    if (!parsed) parsed = parseBookingEmail(text);
+    const found = applyParsedToForm(parsed);
+    btn.disabled = false;
+
+    const tag = usedAi ? "" : (isChinese() ? "（基础识别）" : " (basic)");
     note.textContent = isChinese()
-      ? `已识别 ${found} 个场次，请核对并修改。`
-      : `Filled in ${found} session(s) — please review and adjust.`;
+      ? `已识别 ${found} 个场次，请核对并修改。${tag}`
+      : `Filled in ${found} session(s) — please review and adjust.${tag}`;
   });
   document.querySelector("#close-school-modal").addEventListener("click", closeSchoolModal);
   document.querySelector("#school-modal-backdrop").addEventListener("click", closeSchoolModal);

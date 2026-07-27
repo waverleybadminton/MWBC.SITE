@@ -320,6 +320,20 @@
       await this._refresh();
     },
 
+    // AI email parser (Claude). Returns the parsed booking, or null if it's
+    // unavailable (no API key / error) so the caller can fall back to regex.
+    async parseEmail(text) {
+      try {
+        const { data, error } = await sb().functions.invoke("parse-booking-email", {
+          body: { text }
+        });
+        if (error || !data || !data.ok) return null;
+        return data.parsed;
+      } catch {
+        return null;
+      }
+    },
+
     async signIn(email, password) {
       const { error } = await sb().auth.signInWithPassword({ email, password });
       if (error) throw error;
