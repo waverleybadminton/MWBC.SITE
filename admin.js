@@ -697,9 +697,6 @@ function durationOptionsHTML(selected) {
   return [60, 90, 120, 150, 180, 210, 240, 270, 300]
     .map((m) => `<option value="${m}"${m === selected ? " selected" : ""}>${m < 180 ? m + " min" : (m / 60) + " h"}</option>`).join("");
 }
-function timeOptionsHTML(selected) {
-  return getScheduleTimes().map((tm) => `<option value="${tm}"${tm === selected ? " selected" : ""}>${displayTime(tm)}</option>`).join("");
-}
 function freeCourtCount(date, time, duration) {
   if (!window.MWBC_SCHEDULER) return courts.length;
   return window.MWBC_SCHEDULER.allocate(schoolPool(), date, time, duration, courts.length).length;
@@ -710,7 +707,7 @@ function addSessionRow(date) {
   row.className = "session-row";
   row.innerHTML = `
     <label>${t("Date")}<input type="date" class="s-date" required></label>
-    <label>${t("Start time")}<select class="s-time">${timeOptionsHTML("09:00")}</select></label>
+    <label>${t("Start time")}<input type="time" class="s-time" step="900" value="09:00"></label>
     <label>${t("Duration")}<select class="s-duration">${durationOptionsHTML(120)}</select></label>
     <label>${t("Courts")}<input type="number" class="s-courts" min="1" max="14" value="14"></label>
     <span class="s-price" aria-label="${t("Session price")}"></span>
@@ -822,11 +819,7 @@ async function openSchoolEditModal(id) {
     addSessionRow(b.date);
     const row = sessionRows.lastElementChild;
     row.querySelector(".s-date").value = b.date;
-    const timeSel = row.querySelector(".s-time");
-    if (!Array.from(timeSel.options).some((o) => o.value === b.time)) {
-      timeSel.insertAdjacentHTML("beforeend", `<option value="${b.time}">${displayTime(b.time)}</option>`);
-    }
-    timeSel.value = b.time;
+    row.querySelector(".s-time").value = b.time;
     row.querySelector(".s-duration").value = String(b.duration);
     row.querySelector(".s-courts").value = String(b.courtCount);
   });
@@ -956,8 +949,8 @@ function parseTimeRange(str) {
   };
   const sh = to24(+m[1], m[3], m[6]), sm = m[2] ? +m[2] : 0;
   const eh = to24(+m[4], m[6], m[3]), em = m[5] ? +m[5] : 0;
-  const snap = (x) => Math.round(x / 30) * 30;
-  const start = snap(sh * 60 + sm), end = snap(eh * 60 + em);
+  // Keep the exact minutes the customer wrote (e.g. 1:15pm), no 30-min snapping.
+  const start = sh * 60 + sm, end = eh * 60 + em;
   if (end <= start) return null;
   return { startMin: start, duration: Math.max(30, end - start) };
 }
@@ -1060,12 +1053,7 @@ function applyParsedToForm(p) {
       addSessionRow(s.date);
       const row = sessionRows.lastElementChild;
       row.querySelector(".s-date").value = s.date;
-      const timeStr = timeFromMinutes(s.startMin);
-      const timeSel = row.querySelector(".s-time");
-      if (!Array.from(timeSel.options).some((o) => o.value === timeStr)) {
-        timeSel.insertAdjacentHTML("beforeend", `<option value="${timeStr}">${displayTime(timeStr)}</option>`);
-      }
-      timeSel.value = timeStr;
+      row.querySelector(".s-time").value = timeFromMinutes(s.startMin);
       const dur = DURATION_OPTS.reduce((a, b) => (Math.abs(b - s.duration) < Math.abs(a - s.duration) ? b : a), 120);
       row.querySelector(".s-duration").value = String(dur);
       row.querySelector(".s-courts").value = String(s.courts);
