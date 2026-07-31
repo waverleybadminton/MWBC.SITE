@@ -693,10 +693,6 @@ function schoolPerCourtCents(date, startMin, durationMin) {
   return Math.round(total * 100);
 }
 
-function durationOptionsHTML(selected) {
-  return [60, 90, 120, 150, 180, 210, 240, 270, 300]
-    .map((m) => `<option value="${m}"${m === selected ? " selected" : ""}>${m < 180 ? m + " min" : (m / 60) + " h"}</option>`).join("");
-}
 function freeCourtCount(date, time, duration) {
   if (!window.MWBC_SCHEDULER) return courts.length;
   return window.MWBC_SCHEDULER.allocate(schoolPool(), date, time, duration, courts.length).length;
@@ -708,7 +704,7 @@ function addSessionRow(date) {
   row.innerHTML = `
     <label>${t("Date")}<input type="date" class="s-date" required></label>
     <label>${t("Start time")}<input type="time" class="s-time" step="900" value="09:00"></label>
-    <label>${t("Duration")}<select class="s-duration">${durationOptionsHTML(120)}</select></label>
+    <label>${t("Duration")}<div class="dur-input"><input type="number" class="s-duration" min="30" max="600" step="15" value="120"><span>min</span></div></label>
     <label>${t("Courts")}<input type="number" class="s-courts" min="1" max="14" value="14"></label>
     <span class="s-price" aria-label="${t("Session price")}"></span>
     <span class="s-avail"></span>
@@ -726,7 +722,7 @@ function readSessions() {
   return Array.from(sessionRows.querySelectorAll(".session-row")).map((row) => ({
     date: row.querySelector(".s-date").value,
     time: row.querySelector(".s-time").value,
-    duration: Number(row.querySelector(".s-duration").value),
+    duration: Math.max(30, Math.min(600, Number(row.querySelector(".s-duration").value) || 120)),
     courtsWanted: Math.max(1, Math.min(courts.length, Number(row.querySelector(".s-courts").value) || 1)),
     row
   })).map((s) => ({
@@ -1036,7 +1032,6 @@ function autoReference(schoolName, sessions) {
   return `${init}-${year}-${md}`;
 }
 
-const DURATION_OPTS = [60, 90, 120, 150, 180, 210, 240, 270, 300];
 function applyParsedToForm(p) {
   if (p.schoolName) document.querySelector("#school-name").value = p.schoolName;
   if (p.contactName) document.querySelector("#school-contact").value = p.contactName;
@@ -1054,8 +1049,7 @@ function applyParsedToForm(p) {
       const row = sessionRows.lastElementChild;
       row.querySelector(".s-date").value = s.date;
       row.querySelector(".s-time").value = timeFromMinutes(s.startMin);
-      const dur = DURATION_OPTS.reduce((a, b) => (Math.abs(b - s.duration) < Math.abs(a - s.duration) ? b : a), 120);
-      row.querySelector(".s-duration").value = String(dur);
+      row.querySelector(".s-duration").value = String(s.duration);
       row.querySelector(".s-courts").value = String(s.courts);
     });
   }

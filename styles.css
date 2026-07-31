@@ -1560,6 +1560,9 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .quote-input { display: flex; align-items: center; gap: 0.35rem; }
 .quote-input span { font-weight: 800; font-size: 1.05rem; }
 .quote-input input { flex: 1; }
+.dur-input { display: flex; align-items: center; gap: 0.3rem; }
+.dur-input input { flex: 1; min-width: 0; }
+.dur-input span { font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
 
 .email-body { width: 100%; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.82rem; line-height: 1.5; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 0.8rem; resize: vertical; background: var(--paper); color: var(--ink); }
 .email-actions { align-items: center; }
