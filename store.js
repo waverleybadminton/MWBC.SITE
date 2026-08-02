@@ -320,6 +320,19 @@
       await this._refresh();
     },
 
+    // Assign (once) and return a sequential invoice number for a school
+    // booking. Idempotent — re-opening returns the same number.
+    async assignSchoolInvoiceNo(schoolId) {
+      const { data, error } = await sb().rpc("assign_invoice_no_school", { p_school: schoolId });
+      if (error) throw error;
+      return data;
+    },
+    async assignGroupInvoiceNo(groupId) {
+      const { data, error } = await sb().rpc("assign_invoice_no_group", { p_group: groupId });
+      if (error) throw error;
+      return data;
+    },
+
     // AI email parser (Claude). Returns the parsed booking, or null if it's
     // unavailable (no API key / error) so the caller can fall back to regex.
     async parseEmail(text) {

@@ -366,6 +366,8 @@
     "Update Booking": "更新预订",
     "Edit booking": "编辑预订",
     "Edit": "编辑",
+    "Invoice": "发票",
+    "Print / Save as PDF": "打印 / 存为 PDF",
     "Booked by us": "我们代订",
     "Repeat weekly": "每周重复",
     "Just this date": "仅此日期",

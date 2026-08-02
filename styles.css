@@ -1564,6 +1564,52 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .dur-input input { flex: 1; min-width: 0; }
 .dur-input span { font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
 
+/* ---------- Invoice (print-ready tax invoice) ---------- */
+.invoice-card { width: min(860px, 96vw); max-height: 92vh; overflow: auto; background: #fff; border-radius: 14px; padding: 1rem 1.15rem 1.25rem; }
+.invoice-actions { justify-content: flex-start; }
+.invoice-sheet { color: #14202c; background: #fff; padding: 0.5rem 0.25rem; font-size: 0.9rem; line-height: 1.45; }
+.invoice-sheet .inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 3px solid #0e6b45; padding-bottom: 0.8rem; }
+.invoice-sheet .inv-brand { display: flex; gap: 0.85rem; align-items: flex-start; }
+.invoice-sheet .inv-logo { width: 150px; height: auto; }
+.invoice-sheet .inv-org strong { display: block; font-size: 1rem; color: #0e6b45; }
+.invoice-sheet .inv-org div { font-size: 0.8rem; color: #3a4a57; }
+.invoice-sheet .inv-title { text-align: right; }
+.invoice-sheet .inv-title h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.06em; color: #14202c; }
+.invoice-sheet .inv-no { font-weight: 800; color: #0e6b45; margin-top: 0.2rem; }
+.invoice-sheet .inv-meta { display: flex; justify-content: space-between; gap: 1.5rem; margin: 1rem 0; }
+.invoice-sheet .inv-label { display: block; text-transform: uppercase; font-size: 0.66rem; letter-spacing: 0.09em; color: #7a8792; font-weight: 800; margin-bottom: 0.15rem; }
+.invoice-sheet .inv-dates { text-align: right; }
+.invoice-sheet .inv-dates .inv-label { display: inline-block; margin: 0 0.4rem 0 0; }
+.invoice-sheet .inv-dates > div { margin-bottom: 0.2rem; }
+.invoice-sheet table.inv-items { width: 100%; border-collapse: collapse; margin-top: 0.4rem; }
+.invoice-sheet table.inv-items th { background: #0e6b45; color: #fff; text-align: left; padding: 0.5rem 0.6rem; font-size: 0.76rem; letter-spacing: 0.03em; }
+.invoice-sheet table.inv-items td { padding: 0.5rem 0.6rem; border-bottom: 1px solid #e3e8ec; vertical-align: top; }
+.invoice-sheet .num { text-align: right; white-space: nowrap; }
+.invoice-sheet th.num { text-align: right; }
+.invoice-sheet .inv-totals-wrap { display: flex; justify-content: flex-end; margin-top: 0.6rem; }
+.invoice-sheet table.inv-totals { min-width: 280px; border-collapse: collapse; }
+.invoice-sheet table.inv-totals td { padding: 0.32rem 0.6rem; }
+.invoice-sheet table.inv-totals td.num { font-variant-numeric: tabular-nums; }
+.invoice-sheet table.inv-totals tr.grand td { border-top: 2px solid #14202c; font-weight: 800; font-size: 1.05rem; }
+.invoice-sheet table.inv-totals tr.due td { color: #0e6b45; font-weight: 800; }
+.invoice-sheet .inv-pay { margin-top: 1.1rem; background: #f4f7f5; border: 1px solid #d9e5df; border-radius: 8px; padding: 0.7rem 0.85rem; }
+.invoice-sheet .inv-pay-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.9rem; font-size: 0.84rem; }
+.invoice-sheet .inv-pay-grid > div:nth-child(odd) { color: #7a8792; font-weight: 700; }
+.invoice-sheet .inv-foot { margin-top: 1rem; text-align: center; font-size: 0.8rem; color: #3a4a57; }
+.invoice-sheet .inv-thanks { font-weight: 800; color: #0e6b45; font-size: 0.95rem; margin-top: 0.25rem; }
+@media (max-width: 560px) {
+  .invoice-sheet .inv-head, .invoice-sheet .inv-meta { flex-direction: column; }
+  .invoice-sheet .inv-title, .invoice-sheet .inv-dates { text-align: left; }
+}
+
+/* Print: show only the invoice sheet, nothing else. */
+@media print {
+  body.invoice-printing * { visibility: hidden !important; }
+  body.invoice-printing .invoice-sheet, body.invoice-printing .invoice-sheet * { visibility: visible !important; }
+  body.invoice-printing .invoice-sheet { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
+  body.invoice-printing .no-print { display: none !important; }
+}
+
 .email-body { width: 100%; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.82rem; line-height: 1.5; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 0.8rem; resize: vertical; background: var(--paper); color: var(--ink); }
 .email-actions { align-items: center; }
 

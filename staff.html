@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y45">
+    <link rel="stylesheet" href="./styles.css?v=y46">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -938,6 +938,24 @@
               </div>
             </div>
 
+            <div class="admin-modal" id="invoice-modal" hidden>
+              <button class="admin-modal-backdrop" id="invoice-modal-backdrop" type="button" aria-label="Close"></button>
+              <div class="invoice-card" role="dialog" aria-modal="true" aria-labelledby="invoice-modal-title">
+                <div class="admin-section-title admin-modal-title no-print">
+                  <div>
+                    <p class="kicker">Tax invoice</p>
+                    <h2 id="invoice-modal-title">Invoice</h2>
+                  </div>
+                  <button class="modal-close" id="close-invoice-modal" type="button" aria-label="Close">&times;</button>
+                </div>
+                <div class="invoice-sheet" id="invoice-sheet"></div>
+                <div class="manual-actions invoice-actions no-print">
+                  <button class="btn btn-book" type="button" id="invoice-print">Print / Save as PDF</button>
+                  <p id="invoice-note" class="form-note" role="status"></p>
+                </div>
+              </div>
+            </div>
+
             <div class="admin-table-shell" id="bookings-list">
               <div class="admin-section-title list-title">
                 <h2 id="bookings-list-title">Bookings</h2>
@@ -1028,12 +1046,12 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y45"></script>
-    <script src="./mwbc-scheduler.js?v=y45"></script>
-    <script src="./supabase-client.js?v=y45"></script>
-    <script src="./store.js?v=y45"></script>
-    <script src="./main.js?v=y45"></script>
-    <script src="./app.js?v=y45"></script>
-    <script src="./admin.js?v=y45"></script>
+    <script src="./i18n.js?v=y46"></script>
+    <script src="./mwbc-scheduler.js?v=y46"></script>
+    <script src="./supabase-client.js?v=y46"></script>
+    <script src="./store.js?v=y46"></script>
+    <script src="./main.js?v=y46"></script>
+    <script src="./app.js?v=y46"></script>
+    <script src="./admin.js?v=y46"></script>
   </body>
 </html>

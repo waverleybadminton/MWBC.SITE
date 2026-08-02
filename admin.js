@@ -505,6 +505,7 @@ function renderBookings() {
       <td><span class="status-pill ${paidClass}">${t(booking.status)}</span></td>
       <td class="table-actions">
         <button class="table-action" type="button" data-edit="${booking.id}">${t("Edit")}</button>
+        ${booking.source === "School" ? "" : `<button class="table-action" type="button" data-invoice="${booking.id}">${t("Invoice")}</button>`}
         <button class="table-action danger" type="button" data-cancel="${booking.id}">${booking.status === "Paid" ? t("Refund −$5") : t("Remove")}</button>
       </td>
     `;
@@ -513,6 +514,9 @@ function renderBookings() {
 
   bookingRows.querySelectorAll("[data-cancel]").forEach((button) => {
     button.addEventListener("click", () => cancelBooking(button.dataset.cancel));
+  });
+  bookingRows.querySelectorAll("[data-invoice]").forEach((button) => {
+    button.addEventListener("click", () => invoiceForGroup(button.dataset.invoice));
   });
   bookingRows.querySelectorAll("[data-edit]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1081,6 +1085,186 @@ function emailForSchool(id) {
   showSchoolEmail({ schoolName: h.school_name, contactName: h.contact_name, email: h.contact_email, phone: h.contact_phone, reference: h.reference, items: h.items || [] }, sessions);
 }
 
+/* ---------- Invoices (print-ready tax invoice; prices are GST-inclusive) ---------- */
+const CENTRE = {
+  name: "Mt Waverley Badminton Centre",
+  address: "59/170 Forster Road, Mt Waverley, VIC 3149",
+  phone: "0452 242 399",
+  email: "booking.mwbc@gmail.com",
+  abn: "95 666 230 431",
+  bankName: "ANZ Bank",
+  bankAccountName: "Stoneway Link Pty Ltd",
+  bsb: "013-345",
+  acc: "6490 99906"
+};
+const INVOICE_DUE_DAYS = 7;
+
+function invoiceMoney(cents) { return `$${(Math.round(cents) / 100).toFixed(2)}`; }
+function invoiceFullDate(value) {
+  return new Intl.DateTimeFormat("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    .format(new Date(`${value}T12:00:00`));
+}
+function invoiceShortDate(d) {
+  return new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "long", year: "numeric" }).format(d);
+}
+
+// One line item per session (+ any extra items). Amounts are GST-inclusive.
+function invoiceLinesForSchool(h) {
+  const lines = readBookings().filter((b) => b.schoolId === h.id)
+    .sort((a, b) => a.date.localeCompare(b.date) || minutesFromTime(a.time) - minutesFromTime(b.time))
+    .map((s) => {
+      const courtsN = s.courtCount || bookingCourts(s).length || 1;
+      const end = timeFromMinutes(minutesFromTime(s.time) + s.duration);
+      const amount = Math.round((s.price || 0) * 100);
+      return {
+        desc: `Court hire — ${invoiceFullDate(s.date)}, ${displayTime(s.time)}–${displayTime(end)}`,
+        qty: `${courtsN} ${courtsN === 1 ? "court" : "courts"}`,
+        unitCents: Math.round(amount / courtsN),
+        amountCents: amount
+      };
+    });
+  (h.items || []).forEach((it) => {
+    const amt = Math.round(Number(it.amountCents || 0));
+    lines.push({ desc: it.description || "Item", qty: "1", unitCents: amt, amountCents: amt });
+  });
+  const lineSum = lines.reduce((a, l) => a + l.amountCents, 0);
+  const total = Number(h.quote_cents || 0) || lineSum;
+  if (total !== lineSum) {
+    const diff = total - lineSum;
+    lines.push({ desc: diff > 0 ? "Adjustment" : "Discount", qty: "1", unitCents: diff, amountCents: diff });
+  }
+  return { lines, totalCents: total };
+}
+
+function renderInvoiceSheet({ invoiceNo, billTo, reference, lines, totalCents }) {
+  const gst = Math.round(totalCents / 11);        // GST-inclusive: GST = total ÷ 11
+  const sub = totalCents - gst;
+  const today = new Date();
+  const due = new Date(today.getTime() + INVOICE_DUE_DAYS * 86400000);
+  const no = invoiceNo != null ? String(invoiceNo).padStart(3, "0") : "—";
+  const rows = lines.map((l) => `
+    <tr>
+      <td>${escapeHtml(l.desc)}</td>
+      <td class="num">${escapeHtml(l.qty)}</td>
+      <td class="num">${invoiceMoney(l.unitCents)}</td>
+      <td class="num">${invoiceMoney(l.amountCents)}</td>
+    </tr>`).join("");
+  const billLines = (billTo || []).filter(Boolean).map((x) => `<div>${escapeHtml(x)}</div>`).join("");
+  return `
+    <div class="inv-head">
+      <div class="inv-brand">
+        <img src="./assets/mwbc-logo.jpg" alt="${escapeHtml(CENTRE.name)}" class="inv-logo">
+        <div class="inv-org">
+          <strong>${escapeHtml(CENTRE.name)}</strong>
+          <div>${escapeHtml(CENTRE.address)}</div>
+          <div>Phone ${escapeHtml(CENTRE.phone)}</div>
+          <div>ABN ${escapeHtml(CENTRE.abn)}</div>
+        </div>
+      </div>
+      <div class="inv-title">
+        <h1>TAX INVOICE</h1>
+        <div class="inv-no">Invoice&nbsp;#${no}</div>
+      </div>
+    </div>
+
+    <div class="inv-meta">
+      <div class="inv-billto">
+        <span class="inv-label">Bill to</span>
+        ${billLines || "<div>—</div>"}
+      </div>
+      <div class="inv-dates">
+        <div><span class="inv-label">Invoice date</span> ${escapeHtml(invoiceShortDate(today))}</div>
+        <div><span class="inv-label">Due date</span> ${escapeHtml(invoiceShortDate(due))}</div>
+        ${reference ? `<div><span class="inv-label">Reference</span> ${escapeHtml(reference)}</div>` : ""}
+      </div>
+    </div>
+
+    <table class="inv-items">
+      <thead>
+        <tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount AUD</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div class="inv-totals-wrap">
+      <table class="inv-totals">
+        <tr><td>Subtotal (excl. GST)</td><td class="num">${invoiceMoney(sub)}</td></tr>
+        <tr><td>GST (10%)</td><td class="num">${invoiceMoney(gst)}</td></tr>
+        <tr class="grand"><td>Total (incl. GST)</td><td class="num">${invoiceMoney(totalCents)}</td></tr>
+        <tr class="due"><td>Amount due</td><td class="num">${invoiceMoney(totalCents)}</td></tr>
+      </table>
+    </div>
+
+    <div class="inv-pay">
+      <span class="inv-label">Payment — direct deposit</span>
+      <div class="inv-pay-grid">
+        <div>Bank</div><div>${escapeHtml(CENTRE.bankName)}</div>
+        <div>Account name</div><div>${escapeHtml(CENTRE.bankAccountName)}</div>
+        <div>BSB</div><div>${escapeHtml(CENTRE.bsb)}</div>
+        <div>Account</div><div>${escapeHtml(CENTRE.acc)}</div>
+        <div>Reference</div><div>Invoice #${no}</div>
+      </div>
+    </div>
+
+    <div class="inv-foot">
+      <p>Questions about this invoice? Phone ${escapeHtml(CENTRE.phone)} · Email ${escapeHtml(CENTRE.email)}</p>
+      <p class="inv-thanks">Thank you for your business!</p>
+    </div>`;
+}
+
+function openInvoice(data) {
+  const sheet = document.querySelector("#invoice-sheet");
+  if (!sheet) return;
+  sheet.innerHTML = renderInvoiceSheet(data);
+  const note = document.querySelector("#invoice-note");
+  if (note) note.textContent = "";
+  const modal = document.querySelector("#invoice-modal");
+  modal.hidden = false;
+  document.body.classList.add("modal-open");
+}
+function closeInvoiceModal() {
+  const modal = document.querySelector("#invoice-modal");
+  if (modal) modal.hidden = true;
+  document.body.classList.remove("modal-open");
+}
+
+async function invoiceForSchool(id) {
+  const h = schoolHeaders.find((x) => x.id === id);
+  if (!h) return;
+  let no = null;
+  try { no = await window.MWBC_STORE.assignSchoolInvoiceNo(id); } catch { no = null; }
+  const { lines, totalCents } = invoiceLinesForSchool(h);
+  openInvoice({
+    invoiceNo: no,
+    billTo: [h.school_name, h.contact_name, h.contact_email, h.contact_phone],
+    reference: h.reference || "",
+    lines,
+    totalCents
+  });
+}
+
+async function invoiceForGroup(groupId) {
+  const b = readBookings().find((x) => x.id === groupId);
+  if (!b) return;
+  let no = null;
+  try { no = await window.MWBC_STORE.assignGroupInvoiceNo(groupId); } catch { no = null; }
+  const courtsN = b.courtCount || bookingCourts(b).length || 1;
+  const end = timeFromMinutes(minutesFromTime(b.time) + b.duration);
+  const amount = Math.round((b.price || 0) * 100);
+  openInvoice({
+    invoiceNo: no,
+    billTo: [b.name, b.email, b.phone],
+    reference: "",
+    lines: [{
+      desc: `Court hire — ${invoiceFullDate(b.date)}, ${displayTime(b.time)}–${displayTime(end)}`,
+      qty: `${courtsN} ${courtsN === 1 ? "court" : "courts"}`,
+      unitCents: Math.round(amount / courtsN),
+      amountCents: amount
+    }],
+    totalCents: amount
+  });
+}
+
 async function removeSchool(id) {
   const h = schoolHeaders.find((x) => x.id === id);
   if (!window.confirm(`${t("Remove this school booking and free all its courts?")}\n\n${h ? h.school_name : ""}`)) return;
@@ -1110,12 +1294,14 @@ async function renderSchoolList() {
       <td class="table-actions">
         <button class="table-action" type="button" data-school-edit="${h.id}">${t("Edit")}</button>
         <button class="table-action" type="button" data-school-email="${h.id}">${t("Email")}</button>
+        <button class="table-action" type="button" data-school-invoice="${h.id}">${t("Invoice")}</button>
         <button class="table-action danger" type="button" data-school-remove="${h.id}">${t("Remove")}</button>
       </td>`;
     schoolBookingsBody.append(tr);
   });
   schoolBookingsBody.querySelectorAll("[data-school-edit]").forEach((b) => b.addEventListener("click", () => openSchoolEditModal(b.dataset.schoolEdit)));
   schoolBookingsBody.querySelectorAll("[data-school-email]").forEach((b) => b.addEventListener("click", () => emailForSchool(b.dataset.schoolEmail)));
+  schoolBookingsBody.querySelectorAll("[data-school-invoice]").forEach((b) => b.addEventListener("click", () => invoiceForSchool(b.dataset.schoolInvoice)));
   schoolBookingsBody.querySelectorAll("[data-school-remove]").forEach((b) => b.addEventListener("click", () => removeSchool(b.dataset.schoolRemove)));
 }
 
@@ -1152,6 +1338,16 @@ function bindSchoolBookings() {
   document.querySelector("#school-modal-backdrop").addEventListener("click", closeSchoolModal);
   document.querySelector("#close-email-modal").addEventListener("click", closeEmailModal);
   document.querySelector("#email-modal-backdrop").addEventListener("click", closeEmailModal);
+  const closeInvBtn = document.querySelector("#close-invoice-modal");
+  if (closeInvBtn) closeInvBtn.addEventListener("click", closeInvoiceModal);
+  const invBackdrop = document.querySelector("#invoice-modal-backdrop");
+  if (invBackdrop) invBackdrop.addEventListener("click", closeInvoiceModal);
+  const invPrint = document.querySelector("#invoice-print");
+  if (invPrint) invPrint.addEventListener("click", () => {
+    document.body.classList.add("invoice-printing");
+    window.print();
+  });
+  window.addEventListener("afterprint", () => document.body.classList.remove("invoice-printing"));
   schoolQuote.addEventListener("input", () => { schoolQuote.dataset.touched = "1"; });
 
   document.querySelector("#email-copy").addEventListener("click", async () => {
