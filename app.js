@@ -422,7 +422,7 @@ function bindFilters() {
 
 // Flip to true the moment live Stripe keys are in the Supabase Vault. While
 // false, the booking widget shows availability but directs customers to call.
-const ONLINE_BOOKING = false;
+const ONLINE_BOOKING = true;
 
 function applyBookingMode() {
   if (ONLINE_BOOKING || !form) return;
