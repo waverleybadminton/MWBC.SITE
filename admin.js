@@ -301,6 +301,24 @@ async function cancelBooking(id) {
   }
 }
 
+// Hard-delete a booking record (any date, paid or not). Frees the court if it
+// was upcoming; for paid bookings it does NOT refund — that's what Refund −$5
+// is for. Used for cleaning up past or mistaken bookings.
+async function deleteBooking(id) {
+  const b = readBookings().find((item) => item.id === id);
+  if (!b) return;
+  const label = `${b.name || t("(no name)")} · ${displayDate(b.date, { short: true })} ${displayTime(b.time)}`;
+  const paidWarn = b.status === "Paid"
+    ? t("This booking is marked PAID — deleting removes the record and does NOT refund the customer.") + "\n\n"
+    : "";
+  if (!window.confirm(`${paidWarn}${t("Delete this booking? This can't be undone.")}\n\n${label}`)) return;
+  try {
+    await window.MWBC_STORE.remove(id);
+  } catch {
+    window.alert(t("Couldn't delete. Please try again."));
+  }
+}
+
 /* ---------- rendering ---------- */
 
 function renderDayTabs() {
@@ -457,6 +475,13 @@ function upcomingBookings() {
     .sort((a, b) => a.date.localeCompare(b.date) || minutesFromTime(a.time) - minutesFromTime(b.time));
 }
 
+function pastBookings() {
+  const today = isoToday();
+  return readBookings()
+    .filter((b) => b.date < today)
+    .sort((a, b) => b.date.localeCompare(a.date) || minutesFromTime(b.time) - minutesFromTime(a.time));
+}
+
 function renderBookings() {
   const dayBookings = selectedDateBookings();
   // Metrics always describe the selected day, whatever the list is showing.
@@ -474,9 +499,13 @@ function renderBookings() {
     ? `共 14 片场地，${dayBookings.length} 个预订`
     : `${dayBookings.length} booking${dayBookings.length === 1 ? "" : "s"} across 14 courts`;
 
-  const bookings = listScope === "all" ? upcomingBookings() : dayBookings;
+  const bookings = listScope === "all" ? upcomingBookings()
+    : listScope === "past" ? pastBookings()
+    : dayBookings;
   if (bookingsListTitle) {
-    bookingsListTitle.textContent = listScope === "all" ? t("All upcoming bookings") : t("Bookings");
+    bookingsListTitle.textContent = listScope === "all" ? t("All upcoming bookings")
+      : listScope === "past" ? t("Past bookings")
+      : t("Bookings");
   }
 
   bookingRows.innerHTML = "";
@@ -484,6 +513,8 @@ function renderBookings() {
     const row = document.createElement("tr");
     row.innerHTML = `<td colspan="9">${listScope === "all"
       ? t("No upcoming bookings.")
+      : listScope === "past"
+      ? t("No past bookings.")
       : t("No bookings for this day yet. Click any empty slot above to add one.")}</td>`;
     bookingRows.append(row);
     return;
@@ -506,14 +537,18 @@ function renderBookings() {
       <td class="table-actions">
         <button class="table-action" type="button" data-edit="${booking.id}">${t("Edit")}</button>
         ${booking.source === "School" ? "" : `<button class="table-action" type="button" data-invoice="${booking.id}">${t("Invoice")}</button>`}
-        <button class="table-action danger" type="button" data-cancel="${booking.id}">${booking.status === "Paid" ? t("Refund −$5") : t("Remove")}</button>
+        ${booking.status === "Paid" && booking.date >= isoToday() ? `<button class="table-action danger" type="button" data-refund="${booking.id}">${t("Refund −$5")}</button>` : ""}
+        <button class="table-action danger" type="button" data-delete="${booking.id}">${t("Delete")}</button>
       </td>
     `;
     bookingRows.append(row);
   });
 
-  bookingRows.querySelectorAll("[data-cancel]").forEach((button) => {
-    button.addEventListener("click", () => cancelBooking(button.dataset.cancel));
+  bookingRows.querySelectorAll("[data-refund]").forEach((button) => {
+    button.addEventListener("click", () => cancelBooking(button.dataset.refund));
+  });
+  bookingRows.querySelectorAll("[data-delete]").forEach((button) => {
+    button.addEventListener("click", () => deleteBooking(button.dataset.delete));
   });
   bookingRows.querySelectorAll("[data-invoice]").forEach((button) => {
     button.addEventListener("click", () => invoiceForGroup(button.dataset.invoice));
@@ -1491,6 +1526,30 @@ document.querySelectorAll(".list-scope [data-scope]").forEach((button) => {
     renderBookings();
   });
 });
+
+// View just the bookings list full screen (native fullscreen, CSS fallback).
+const fsBtn = document.querySelector("#bookings-fullscreen");
+if (fsBtn && bookingsListShell) {
+  const fsOn = () => document.fullscreenElement === bookingsListShell || bookingsListShell.classList.contains("is-fullscreen");
+  const updateFsBtn = () => { fsBtn.textContent = fsOn() ? t("Exit full screen") : t("⛶ Full screen"); };
+  const exitFs = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    bookingsListShell.classList.remove("is-fullscreen");
+    updateFsBtn();
+  };
+  const enterFs = () => {
+    const req = bookingsListShell.requestFullscreen && bookingsListShell.requestFullscreen();
+    Promise.resolve(req).catch(() => bookingsListShell.classList.add("is-fullscreen")).finally(updateFsBtn);
+  };
+  fsBtn.addEventListener("click", () => (fsOn() ? exitFs() : enterFs()));
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement) bookingsListShell.classList.remove("is-fullscreen");
+    updateFsBtn();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && bookingsListShell.classList.contains("is-fullscreen")) exitFs();
+  });
+}
 
 document.querySelectorAll(".time-jump [data-jump]").forEach((button) => {
   button.addEventListener("click", () => {
