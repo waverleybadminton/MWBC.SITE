@@ -1564,6 +1564,12 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .dur-input input { flex: 1; min-width: 0; }
 .dur-input span { font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
 
+/* ---------- Booking interim: "call to book" (online payments not yet live) ---------- */
+.booking-offline-note { background: #eef6f1; border: 1px solid #cfe4d8; border-left: 4px solid #0e6b45; border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1.1rem; }
+.booking-offline-note strong { display: block; font-size: 1.05rem; color: #0e6b45; margin-bottom: 0.2rem; }
+.booking-offline-note p { margin: 0 0 0.7rem; color: #33434e; font-size: 0.92rem; }
+.booking-offline-note .boff-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
 /* ---------- Invoice (print-ready tax invoice) ---------- */
 .invoice-card { width: min(860px, 96vw); max-height: 92vh; overflow: auto; background: #fff; border-radius: 14px; padding: 1rem 1.15rem 1.25rem; }
 .invoice-actions { justify-content: flex-start; }

@@ -420,9 +420,37 @@ function bindFilters() {
   });
 }
 
+// Flip to true the moment live Stripe keys are in the Supabase Vault. While
+// false, the booking widget shows availability but directs customers to call.
+const ONLINE_BOOKING = false;
+
+function applyBookingMode() {
+  if (ONLINE_BOOKING || !form) return;
+  if (submitButton) submitButton.hidden = true;
+  const policyRow = policyInput ? policyInput.closest("label") : null;
+  if (policyRow) policyRow.hidden = true;
+  if (!document.querySelector("#booking-offline-note")) {
+    const note = document.createElement("div");
+    note.id = "booking-offline-note";
+    note.className = "booking-offline-note";
+    note.innerHTML = `
+      <strong>${t("Online booking is opening soon")}</strong>
+      <p>${t("To book a court today, call or email us and we'll lock it in for you.")}</p>
+      <div class="boff-actions">
+        <a class="btn btn-book" href="tel:+61452242399">${t("Call 0452 242 399")}</a>
+        <a class="link-arrow" href="mailto:booking.mwbc@gmail.com">booking.mwbc@gmail.com</a>
+      </div>`;
+    form.prepend(note);
+  }
+}
+
 function bindBookingForm() {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!ONLINE_BOOKING) {
+      formNote.textContent = t("Online booking is opening soon — please call 0452 242 399 to book.");
+      return;
+    }
     if (!selectedSlot) {
       formNote.textContent = t("Choose an available time to continue.");
       updateProgress(1);
@@ -522,6 +550,7 @@ renderSlots();
 updateSummary();
 bindFilters();
 bindBookingForm();
+applyBookingMode();
 
 // Read-only availability lookup for the homepage hero strip.
 window.MWBC_AVAILABILITY = {
