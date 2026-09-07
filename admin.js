@@ -1527,27 +1527,30 @@ document.querySelectorAll(".list-scope [data-scope]").forEach((button) => {
   });
 });
 
-// View just the bookings list full screen (native fullscreen, CSS fallback).
-const fsBtn = document.querySelector("#bookings-fullscreen");
-if (fsBtn && bookingsListShell) {
-  const fsOn = () => document.fullscreenElement === bookingsListShell || bookingsListShell.classList.contains("is-fullscreen");
+// View the court schedule board full screen (native fullscreen, CSS fallback).
+const fsBtn = document.querySelector("#schedule-fullscreen");
+const schedulePanel = document.querySelector(".scheduler-panel");
+if (fsBtn && schedulePanel) {
+  const fsOn = () => document.fullscreenElement === schedulePanel || schedulePanel.classList.contains("is-fullscreen");
   const updateFsBtn = () => { fsBtn.textContent = fsOn() ? t("Exit full screen") : t("⛶ Full screen"); };
   const exitFs = () => {
     if (document.fullscreenElement) document.exitFullscreen?.();
-    bookingsListShell.classList.remove("is-fullscreen");
+    schedulePanel.classList.remove("is-fullscreen");
     updateFsBtn();
   };
   const enterFs = () => {
-    const req = bookingsListShell.requestFullscreen && bookingsListShell.requestFullscreen();
-    Promise.resolve(req).catch(() => bookingsListShell.classList.add("is-fullscreen")).finally(updateFsBtn);
+    const req = schedulePanel.requestFullscreen && schedulePanel.requestFullscreen();
+    Promise.resolve(req).catch(() => schedulePanel.classList.add("is-fullscreen")).finally(updateFsBtn);
   };
   fsBtn.addEventListener("click", () => (fsOn() ? exitFs() : enterFs()));
   document.addEventListener("fullscreenchange", () => {
-    if (!document.fullscreenElement) bookingsListShell.classList.remove("is-fullscreen");
+    if (!document.fullscreenElement) schedulePanel.classList.remove("is-fullscreen");
     updateFsBtn();
+    // Re-scroll the grid to the current time after entering/leaving fullscreen.
+    if (typeof autoScrollSchedule === "function") setTimeout(autoScrollSchedule, 50);
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && bookingsListShell.classList.contains("is-fullscreen")) exitFs();
+    if (e.key === "Escape" && schedulePanel.classList.contains("is-fullscreen")) exitFs();
   });
 }
 

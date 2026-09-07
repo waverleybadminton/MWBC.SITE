@@ -1564,12 +1564,11 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .dur-input input { flex: 1; min-width: 0; }
 .dur-input span { font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
 
-/* ---------- Bookings list: full-screen view ---------- */
-#bookings-fullscreen { margin-left: auto; }
-.admin-table-shell:fullscreen { background: #fff; padding: 1rem 1.25rem; overflow: auto; }
-.admin-table-shell.is-fullscreen { position: fixed; inset: 0; z-index: 1200; margin: 0; max-width: none; border-radius: 0; background: #fff; padding: 1rem 1.25rem; overflow: auto; }
-.admin-table-shell:fullscreen .table-wrap,
-.admin-table-shell.is-fullscreen .table-wrap { max-height: none; height: auto; }
+/* ---------- Court schedule board: full-screen view ---------- */
+.scheduler-panel:fullscreen { background: #fff; padding: 0.75rem 1rem; overflow: auto; }
+.scheduler-panel.is-fullscreen { position: fixed; inset: 0; z-index: 1200; margin: 0; max-width: none; border-radius: 0; background: #fff; padding: 0.75rem 1rem; overflow: auto; }
+.scheduler-panel:fullscreen .schedule-scroll,
+.scheduler-panel.is-fullscreen .schedule-scroll { max-height: none; height: auto; }
 
 /* ---------- Booking interim: "call to book" (online payments not yet live) ---------- */
 .booking-offline-note { background: #eef6f1; border: 1px solid #cfe4d8; border-left: 4px solid #0e6b45; border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1.1rem; }
