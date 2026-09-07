@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y50">
+    <link rel="stylesheet" href="./styles.css?v=y51">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -1009,6 +1009,28 @@
                 </table>
               </div>
             </div>
+
+            <div class="admin-table-shell customers-shell">
+              <div class="admin-section-title list-title">
+                <h2>Customers</h2>
+                <input type="search" id="customer-search" class="customer-search" placeholder="Search name, email or phone" aria-label="Search customers">
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Contact details</th>
+                      <th>Bookings</th>
+                      <th>Total paid</th>
+                      <th>Last visit</th>
+                      <th>Source</th>
+                    </tr>
+                  </thead>
+                  <tbody id="customers-body"></tbody>
+                </table>
+              </div>
+            </div>
           </section>
         </section>
       </section>
@@ -1048,13 +1070,13 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y50"></script>
-    <script src="./mwbc-scheduler.js?v=y50"></script>
-    <script src="./supabase-client.js?v=y50"></script>
-    <script src="./store.js?v=y50"></script>
-    <script src="./main.js?v=y50"></script>
-    <script src="./app.js?v=y50"></script>
-    <script src="./admin.js?v=y50"></script>
+    <script src="./i18n.js?v=y51"></script>
+    <script src="./mwbc-scheduler.js?v=y51"></script>
+    <script src="./supabase-client.js?v=y51"></script>
+    <script src="./store.js?v=y51"></script>
+    <script src="./main.js?v=y51"></script>
+    <script src="./app.js?v=y51"></script>
+    <script src="./admin.js?v=y51"></script>
     <!-- Cloudflare Web Analytics (privacy-friendly, no cookies) -->
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "710b4f76ce4046bf8204d4eea940ec01"}'></script>
     <!-- End Cloudflare Web Analytics -->

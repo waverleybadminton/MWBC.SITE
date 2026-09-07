@@ -687,6 +687,63 @@ function bindManualBooking() {
   }
 }
 
+/* ---------- customers (aggregated from bookings) ---------- */
+
+// Build one row per customer, keyed by email → phone → name, from all court
+// bookings (holds/cancelled excluded). School sessions carry no contact on the
+// row, so schools stay in their own panel.
+function buildCustomers() {
+  const map = new Map();
+  readBookings().forEach((b) => {
+    if (b.status === "Hold" || b.status === "Cancelled") return;
+    const email = (b.email || "").trim();
+    const phone = (b.phone || "").trim();
+    const name = (b.name || "").trim();
+    const key = email.toLowerCase() || digitsOnly(phone).replace(/^61/, "0") || name.toLowerCase();
+    if (!key) return;
+    let c = map.get(key);
+    if (!c) { c = { name: "", email: "", phone: "", count: 0, paidCents: 0, lastDate: "", sources: new Set() }; map.set(key, c); }
+    if (!c.name && name) c.name = name;      // readBookings is newest-first, so keep the most recent non-empty
+    if (!c.email && email) c.email = email;
+    if (!c.phone && phone) c.phone = phone;
+    c.count += 1;
+    if (b.status === "Paid") c.paidCents += Math.round((b.price || 0) * 100);
+    if (b.date > c.lastDate) c.lastDate = b.date;
+    c.sources.add(b.source || "Online");
+  });
+  return [...map.values()].sort((a, b) => (b.lastDate || "").localeCompare(a.lastDate || "") || b.count - a.count);
+}
+
+function renderCustomers() {
+  const body = document.querySelector("#customers-body");
+  if (!body) return;
+  const search = document.querySelector("#customer-search");
+  const q = (search && search.value || "").trim().toLowerCase();
+  let customers = buildCustomers();
+  if (q) {
+    customers = customers.filter((c) =>
+      `${c.name} ${c.email} ${c.phone}`.toLowerCase().includes(q));
+  }
+  body.innerHTML = "";
+  if (!customers.length) {
+    body.innerHTML = `<tr><td colspan="6">${q ? t("No customers match your search.") : t("No customers yet.")}</td></tr>`;
+    return;
+  }
+  customers.forEach((c) => {
+    const contact = [c.email, c.phone].filter(Boolean).join(" · ");
+    const sources = [...c.sources].map((s) => t(s)).join(", ");
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(c.name || t("(no name)"))}</td>
+      <td>${escapeHtml(contact)}</td>
+      <td>${c.count}</td>
+      <td>$${(c.paidCents / 100).toFixed(2)}</td>
+      <td>${c.lastDate ? escapeHtml(displayDate(c.lastDate, { short: true })) : "—"}</td>
+      <td>${escapeHtml(sources)}</td>`;
+    body.append(tr);
+  });
+}
+
 function renderAll() {
   manualDate.value = adminDate.value;
   renderManualOptions();
@@ -694,6 +751,7 @@ function renderAll() {
   renderSchedule();
   renderBookings();
   renderSchoolList();
+  renderCustomers();
 }
 
 /* ---------- school bookings ---------- */
@@ -1517,6 +1575,8 @@ todayButton?.addEventListener("click", () => goToDate(isoToday()));
 // The bookings list gets its own day stepper, so you never scroll back up.
 listPrevButton?.addEventListener("click", () => goToDate(addDays(adminDate.value, -1)));
 listNextButton?.addEventListener("click", () => goToDate(addDays(adminDate.value, 1)));
+
+document.querySelector("#customer-search")?.addEventListener("input", () => renderCustomers());
 
 document.querySelectorAll(".list-scope [data-scope]").forEach((button) => {
   button.addEventListener("click", () => {
