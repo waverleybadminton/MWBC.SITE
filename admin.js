@@ -167,13 +167,15 @@ function bookingClass(booking) {
   return `${source} ${paid}`;
 }
 
-function bookingBlockHTML(booking) {
+function bookingBlockHTML(booking, court) {
+  const courtBadge = court ? `<span class="bb-court">#${escapeHtml(String(courtNumber(court)))}</span>` : "";
   if (booking.source === "School") {
-    return `<span class="bb-name">${escapeHtml(booking.name)}</span><span class="bb-tag">${t("School")}</span>`;
+    return courtBadge + `<span class="bb-name">${escapeHtml(booking.name)}</span><span class="bb-tag">${t("School")}</span>`;
   }
   const phone = booking.phone || booking.email || "";
   const tag = booking.status === "Paid" ? t("Paid") : t("Unpaid");
-  return `<span class="bb-name">${escapeHtml(booking.name)}</span>`
+  return courtBadge
+    + `<span class="bb-name">${escapeHtml(booking.name)}</span>`
     + (phone ? `<span class="bb-phone">${escapeHtml(phone)}</span>` : "")
     + `<span class="bb-tag">${escapeHtml(tag)}</span>`;
 }
@@ -418,7 +420,7 @@ function renderSchedule() {
       block.setAttribute("aria-label", isChinese()
         ? `编辑预订：${booking.name}，${displayCourt(court)}，${displayTime(booking.time)}`
         : `Edit booking: ${booking.name}, ${court} at ${displayTime(booking.time)}`);
-      block.innerHTML = bookingBlockHTML(booking);
+      block.innerHTML = bookingBlockHTML(booking, court);
       block.addEventListener("click", () => openEditModal(booking));
       schedule.append(block);
     });

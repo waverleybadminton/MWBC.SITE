@@ -378,6 +378,8 @@
     "Couldn't delete. Please try again.": "删除失败，请重试。",
     "⛶ Full screen": "⛶ 全屏",
     "Exit full screen": "退出全屏",
+    "Weekly for 6 months": "每周，持续 6 个月",
+    "Long-term — weekly for 12 months": "长期——每周，持续 12 个月",
     "Customers": "客户",
     "Total paid": "已付总额",
     "Last visit": "最近预订",
