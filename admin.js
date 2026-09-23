@@ -158,6 +158,42 @@ function getScheduleTimes() {
   return times;
 }
 
+// Remembered customer types (kept per customer). Colours per the centre's key.
+const CUSTOMER_TYPES = [
+  { id: "member", label: "Member", color: "#1f9d55" },    // 会员 green
+  { id: "regular", label: "Regular", color: "#e86aa6" },  // 固定客户 pink
+  { id: "ordinary", label: "Ordinary", color: "#e8b93a" },// 普通客户 yellow
+  { id: "no_show", label: "No-show", color: "#d84040" },  // 鸽子 red
+  { id: "coach", label: "Coach", color: "#2f7bd8" },      // 教练 blue
+  { id: "student", label: "Student", color: "#b8c0c8" }   // 学生 light grey
+];
+const CUSTOMER_TYPE_MAP = Object.fromEntries(CUSTOMER_TYPES.map((x) => [x.id, x]));
+
+// Stable identity for a customer across bookings: email → phone → name.
+function customerKey(b) {
+  const email = (b.email || "").trim().toLowerCase();
+  const phone = digitsOnly(b.phone).replace(/^61/, "0");
+  const name = (b.name || "").trim().toLowerCase();
+  return email || phone || name;
+}
+function tagFor(b) {
+  const tags = (window.MWBC_STORE && window.MWBC_STORE.customerTags && window.MWBC_STORE.customerTags()) || {};
+  return tags[customerKey(b)] || "";
+}
+// A distinct, stable colour per school name (so different schools differ).
+function schoolColor(name) {
+  let h = 0;
+  const s = String(name || "");
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+  return `hsl(${h}, 62%, 58%)`;
+}
+// The small type-dot / stripe colour for a booking.
+function bookingTypeColor(booking) {
+  if (booking.source === "School") return schoolColor(booking.name);
+  const tag = tagFor(booking);
+  return (tag && CUSTOMER_TYPE_MAP[tag]) ? CUSTOMER_TYPE_MAP[tag].color : "";
+}
+
 // Colour = who booked (blue online / green booked-by-us / purple school); an
 // amber bar + tag marks unpaid.
 function bookingClass(booking) {
@@ -169,12 +205,14 @@ function bookingClass(booking) {
 
 function bookingBlockHTML(booking, court) {
   const courtBadge = court ? `<span class="bb-court">#${escapeHtml(String(courtNumber(court)))}</span>` : "";
+  const dotColor = bookingTypeColor(booking);
+  const dot = dotColor ? `<span class="bb-type" style="background:${dotColor}"></span>` : "";
   if (booking.source === "School") {
-    return courtBadge + `<span class="bb-name">${escapeHtml(booking.name)}</span><span class="bb-tag">${t("School")}</span>`;
+    return dot + courtBadge + `<span class="bb-name">${escapeHtml(booking.name)}</span><span class="bb-tag">${t("School")}</span>`;
   }
   const phone = booking.phone || booking.email || "";
   const tag = booking.status === "Paid" ? t("Paid") : t("Unpaid");
-  return courtBadge
+  return dot + courtBadge
     + `<span class="bb-name">${escapeHtml(booking.name)}</span>`
     + (phone ? `<span class="bb-phone">${escapeHtml(phone)}</span>` : "")
     + `<span class="bb-tag">${escapeHtml(tag)}</span>`;
@@ -412,6 +450,7 @@ function renderSchedule() {
       const block = document.createElement("button");
       block.type = "button";
       block.className = `booking-block ${bookingClass(booking)}`;
+      block.style.setProperty("--type-color", bookingTypeColor(booking) || "rgba(255,255,255,0.35)");
       block.style.gridColumn = `${courtIndex + 2}`;
       block.style.gridRow = `${startIndex + 2} / span ${slots}`;
       block.title = isChinese()
@@ -701,10 +740,10 @@ function buildCustomers() {
     const email = (b.email || "").trim();
     const phone = (b.phone || "").trim();
     const name = (b.name || "").trim();
-    const key = email.toLowerCase() || digitsOnly(phone).replace(/^61/, "0") || name.toLowerCase();
+    const key = customerKey(b);
     if (!key) return;
     let c = map.get(key);
-    if (!c) { c = { name: "", email: "", phone: "", count: 0, paidCents: 0, lastDate: "", sources: new Set() }; map.set(key, c); }
+    if (!c) { c = { key, name: "", email: "", phone: "", count: 0, paidCents: 0, lastDate: "", sources: new Set() }; map.set(key, c); }
     if (!c.name && name) c.name = name;      // readBookings is newest-first, so keep the most recent non-empty
     if (!c.email && email) c.email = email;
     if (!c.phone && phone) c.phone = phone;
@@ -728,12 +767,18 @@ function renderCustomers() {
   }
   body.innerHTML = "";
   if (!customers.length) {
-    body.innerHTML = `<tr><td colspan="6">${q ? t("No customers match your search.") : t("No customers yet.")}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7">${q ? t("No customers match your search.") : t("No customers yet.")}</td></tr>`;
     return;
   }
+  const tags = (window.MWBC_STORE && window.MWBC_STORE.customerTags()) || {};
   customers.forEach((c) => {
     const contact = [c.email, c.phone].filter(Boolean).join(" · ");
     const sources = [...c.sources].map((s) => t(s)).join(", ");
+    const current = tags[c.key] || "";
+    const swatch = current && CUSTOMER_TYPE_MAP[current]
+      ? `<span class="type-swatch" style="background:${CUSTOMER_TYPE_MAP[current].color}"></span>` : "";
+    const options = `<option value="">${t("— none —")}</option>`
+      + CUSTOMER_TYPES.map((ty) => `<option value="${ty.id}"${ty.id === current ? " selected" : ""}>${t(ty.label)}</option>`).join("");
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${escapeHtml(c.name || t("(no name)"))}</td>
@@ -741,8 +786,15 @@ function renderCustomers() {
       <td>${c.count}</td>
       <td>$${(c.paidCents / 100).toFixed(2)}</td>
       <td>${c.lastDate ? escapeHtml(displayDate(c.lastDate, { short: true })) : "—"}</td>
-      <td>${escapeHtml(sources)}</td>`;
+      <td>${escapeHtml(sources)}</td>
+      <td class="cust-type-cell">${swatch}<select class="cust-type" data-key="${escapeHtml(c.key)}" data-name="${escapeHtml(c.name || "")}">${options}</select></td>`;
     body.append(tr);
+  });
+  body.querySelectorAll(".cust-type").forEach((sel) => {
+    sel.addEventListener("change", async () => {
+      try { await window.MWBC_STORE.setCustomerTag(sel.dataset.key, sel.value, sel.dataset.name); }
+      catch { window.alert(t("Couldn't save. Please try again.")); }
+    });
   });
 }
 

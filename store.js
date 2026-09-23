@@ -91,12 +91,33 @@
 
   const store = {
     _cache: [],
+    _tags: {},
     _authed: false,
     _channel: null,
     ready: false,
 
     all() {
       return this._cache;
+    },
+    // Map of contact_key -> customer type tag (member/regular/…).
+    customerTags() {
+      return this._tags || {};
+    },
+    // Set (or clear, when tag is falsy) a customer's remembered type.
+    async setCustomerTag(key, tag, displayName) {
+      if (!key) return;
+      const client = sb();
+      if (tag) {
+        const { error } = await client.from("customer_tags")
+          .upsert({ contact_key: key, tag, display_name: displayName || null, updated_at: new Date().toISOString() });
+        if (error) throw error;
+        this._tags[key] = tag;
+      } else {
+        const { error } = await client.from("customer_tags").delete().eq("contact_key", key);
+        if (error) throw error;
+        delete this._tags[key];
+      }
+      emit("mwbc-bookings-updated");
     },
     isAuthed() {
       return this._authed;
@@ -137,9 +158,15 @@
       if (this._authed) {
         const { data, error } = await client.from("bookings").select("*");
         this._cache = error ? [] : groupRows(data || []);
+        try {
+          const { data: tags } = await client.from("customer_tags").select("contact_key, tag");
+          this._tags = {};
+          (tags || []).forEach((r) => { if (r.tag) this._tags[r.contact_key] = r.tag; });
+        } catch { this._tags = {}; }
       } else {
         const { data, error } = await client.rpc("availability", {});
         this._cache = error ? [] : pseudoFromAvailability(data || []);
+        this._tags = {};
       }
       emit("mwbc-bookings-updated");
     },

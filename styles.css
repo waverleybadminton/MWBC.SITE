@@ -1513,6 +1513,17 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .bb-name { font-weight: 700; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 20px; }
 .bb-phone { font-size: 0.72rem; opacity: 0.92; white-space: normal; overflow: visible; word-break: break-word; }
 .bb-court { position: absolute; top: 2px; right: 5px; font-size: 0.62rem; font-weight: 800; opacity: 0.75; letter-spacing: 0.02em; }
+/* Customer-type dot (top-left; white ring so it reads on any background). */
+.bb-type { position: absolute; top: 3px; left: 4px; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9); }
+.booking-block .bb-name { }
+.booking-block:has(.bb-type) .bb-name, .booking-block:has(.bb-type) .bb-phone { padding-left: 12px; }
+/* Paid = grey background + a thin type-coloured left stripe. */
+.booking-block.is-paid { background: #8b97a3; box-shadow: inset 4px 0 0 var(--type-color, rgba(255,255,255,0.35)); }
+.booking-block.is-paid:hover { box-shadow: inset 4px 0 0 var(--type-color, rgba(255,255,255,0.35)), inset 0 0 0 2px rgba(255, 255, 255, 0.6); }
+.type-legend .type-legend-label { font-weight: 700; }
+.type-legend i { border-radius: 50%; }
+.type-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; box-shadow: 0 0 0 1px rgba(0,0,0,0.12); }
+.cust-type { padding: 0.25rem 0.4rem; border: 1px solid #cfd6dd; border-radius: 7px; font-size: 0.8rem; }
 .bb-tag {
   align-self: flex-start;
   margin-top: 1px;
