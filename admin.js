@@ -21,6 +21,7 @@ const manualCourtCount = document.querySelector("#manual-court-count");
 const manualTime = document.querySelector("#manual-time");
 const manualDuration = document.querySelector("#manual-duration");
 const manualStatus = document.querySelector("#manual-status");
+const manualType = document.querySelector("#manual-type");
 const manualNote = document.querySelector("#manual-note");
 const manualBookingTitle = document.querySelector("#manual-booking-title");
 const loginScreen = document.querySelector("#admin-login");
@@ -180,18 +181,34 @@ function tagFor(b) {
   const tags = (window.MWBC_STORE && window.MWBC_STORE.customerTags && window.MWBC_STORE.customerTags()) || {};
   return tags[customerKey(b)] || "";
 }
-// A distinct, stable colour per school name (so different schools differ).
+// A distinct, stable colour per school name — shades of purple → pink.
 function schoolColor(name) {
   let h = 0;
   const s = String(name || "");
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
-  return `hsl(${h}, 62%, 58%)`;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100000;
+  const hue = 268 + (h % 72);                 // 268..339: purple through to pink
+  const light = 50 + (Math.floor(h / 72) % 18); // 50..67: vary the shade per school
+  return `hsl(${hue}, 58%, ${light}%)`;
 }
-// The small type-dot / stripe colour for a booking.
-function bookingTypeColor(booking) {
+// The MAIN box colour of a booking: school colour, else customer-type colour,
+// else a neutral slate for customers with no type set yet.
+function bookingBoxColor(booking) {
   if (booking.source === "School") return schoolColor(booking.name);
   const tag = tagFor(booking);
-  return (tag && CUSTOMER_TYPE_MAP[tag]) ? CUSTOMER_TYPE_MAP[tag].color : "";
+  if (tag && CUSTOMER_TYPE_MAP[tag]) return CUSTOMER_TYPE_MAP[tag].color;
+  return "#6b7a8f"; // untagged
+}
+// Small "who booked" dot: white = online, navy = booked by us. Schools: none.
+function sourceDotColor(booking) {
+  if (booking.source === "School") return "";
+  return (booking.source === "Phone" || booking.source === "Manual") ? "#12263a" : "#ffffff";
+}
+// Light box colours (ordinary yellow, student grey, some schools) need dark text.
+function blockNeedsDarkText(booking) {
+  if (booking.status === "Paid") return false;      // paid = dark grey → white text
+  if (booking.source === "School") return false;
+  const tag = tagFor(booking);
+  return tag === "ordinary" || tag === "student";
 }
 
 // Colour = who booked (blue online / green booked-by-us / purple school); an
@@ -205,17 +222,15 @@ function bookingClass(booking) {
 
 function bookingBlockHTML(booking, court) {
   const courtBadge = court ? `<span class="bb-court">#${escapeHtml(String(courtNumber(court)))}</span>` : "";
-  const dotColor = bookingTypeColor(booking);
-  const dot = dotColor ? `<span class="bb-type" style="background:${dotColor}"></span>` : "";
+  const srcColor = sourceDotColor(booking);
+  const dot = srcColor ? `<span class="bb-src-dot" style="background:${srcColor}"></span>` : "";
   if (booking.source === "School") {
     return dot + courtBadge + `<span class="bb-name">${escapeHtml(booking.name)}</span><span class="bb-tag">${t("School")}</span>`;
   }
   const phone = booking.phone || booking.email || "";
-  const tag = booking.status === "Paid" ? t("Paid") : t("Unpaid");
   return dot + courtBadge
     + `<span class="bb-name">${escapeHtml(booking.name)}</span>`
-    + (phone ? `<span class="bb-phone">${escapeHtml(phone)}</span>` : "")
-    + `<span class="bb-tag">${escapeHtml(tag)}</span>`;
+    + (phone ? `<span class="bb-phone">${escapeHtml(phone)}</span>` : "");
 }
 
 function isCourtOccupied(bookings, court, time) {
@@ -254,6 +269,7 @@ function resetModalFields() {
   document.querySelector("#manual-notes").value = "";
   manualCourtCount.value = "1";
   manualStatus.value = "Unpaid";
+  if (manualType) manualType.value = "";
   if (manualRepeat) manualRepeat.value = "1";
   if (manualRepeatField) manualRepeatField.hidden = false;
   if (manualDelete) manualDelete.hidden = true;
@@ -282,6 +298,7 @@ function openEditModal(booking) {
   manualTime.value = booking.time;
   manualDuration.value = String(booking.duration);
   manualStatus.value = booking.status === "Paid" ? "Paid" : (booking.status === "Hold" ? "Hold" : "Unpaid");
+  if (manualType) manualType.value = tagFor(booking);
   if (manualRepeatField) manualRepeatField.hidden = true;   // no recurring while editing
   if (manualDelete) manualDelete.hidden = false;
   if (manualSubmit) manualSubmit.textContent = t("Update Booking");
@@ -449,8 +466,12 @@ function renderSchedule() {
       if (courtIndex < 0) return;
       const block = document.createElement("button");
       block.type = "button";
-      block.className = `booking-block ${bookingClass(booking)}`;
-      block.style.setProperty("--type-color", bookingTypeColor(booking) || "rgba(255,255,255,0.35)");
+      const isPaid = booking.status === "Paid";
+      const boxColor = bookingBoxColor(booking);
+      block.className = "booking-block" + (isPaid ? " is-paid" : "");
+      block.style.background = isPaid ? "#3f4b56" : boxColor;         // paid = dark grey
+      block.style.setProperty("--type-color", boxColor);              // thin stripe on paid
+      block.style.color = blockNeedsDarkText(booking) ? "#16202b" : "#fff";
       block.style.gridColumn = `${courtIndex + 2}`;
       block.style.gridRow = `${startIndex + 2} / span ${slots}`;
       block.title = isChinese()
@@ -701,6 +722,13 @@ function bindManualBooking() {
             ? `已预订 ${made} 周，${skipped} 周因冲突跳过。`
             : `Booked ${made} week(s); ${skipped} skipped due to conflicts.`);
         }
+      }
+
+      // Remember this customer's type (colours all their bookings).
+      if (manualType) {
+        const nm = details.name === t("Reserved") ? "" : details.name;
+        const key = customerKey({ email: details.email, phone: details.phone, name: nm });
+        if (key) { try { await window.MWBC_STORE.setCustomerTag(key, manualType.value, nm); } catch { /* non-critical */ } }
       }
 
       manualForm.reset();

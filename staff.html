@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y53">
+    <link rel="stylesheet" href="./styles.css?v=y54">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -756,20 +756,21 @@
                   <button type="button" data-jump="afternoon">Afternoon</button>
                   <button type="button" data-jump="evening">Evening</button>
                 </div>
-                <div class="schedule-legend" aria-label="Booking colour legend">
-                  <span><i class="legend-online"></i>Online</span>
-                  <span><i class="legend-phone"></i>Booked by us</span>
-                  <span><i class="legend-school"></i>School</span>
-                  <span><i class="legend-unpaid"></i>Unpaid</span>
-                </div>
-                <div class="schedule-legend type-legend" aria-label="Customer type dot colours">
-                  <span class="type-legend-label">Dot:</span>
+                <div class="schedule-legend type-legend" aria-label="Box colour = customer type">
+                  <span class="type-legend-label">Box:</span>
                   <span><i style="background:#1f9d55"></i>Member</span>
                   <span><i style="background:#e86aa6"></i>Regular</span>
                   <span><i style="background:#e8b93a"></i>Ordinary</span>
                   <span><i style="background:#d84040"></i>No-show</span>
                   <span><i style="background:#2f7bd8"></i>Coach</span>
                   <span><i style="background:#b8c0c8"></i>Student</span>
+                  <span><i style="background:#3f4b56"></i>Paid</span>
+                  <span><i style="background:hsl(300,58%,58%)"></i>School (a shade each)</span>
+                </div>
+                <div class="schedule-legend type-legend" aria-label="Dot = who booked">
+                  <span class="type-legend-label">Dot:</span>
+                  <span><i style="background:#ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.35)"></i>Online</span>
+                  <span><i style="background:#12263a"></i>Booked by us</span>
                 </div>
               </div>
             </div>
@@ -848,6 +849,19 @@
                     <option value="Unpaid" selected>Unpaid</option>
                     <option value="Hold">Hold</option>
                   </select>
+                </label>
+                <label>
+                  Customer type
+                  <select id="manual-type">
+                    <option value="">— none —</option>
+                    <option value="member">Member</option>
+                    <option value="regular">Regular</option>
+                    <option value="ordinary">Ordinary</option>
+                    <option value="no_show">No-show</option>
+                    <option value="coach">Coach</option>
+                    <option value="student">Student</option>
+                  </select>
+                  <small class="field-note">Remembered for this customer — colours all their bookings.</small>
                 </label>
                 <label id="manual-repeat-field">
                   Repeat weekly
@@ -1082,13 +1096,13 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y53"></script>
-    <script src="./mwbc-scheduler.js?v=y53"></script>
-    <script src="./supabase-client.js?v=y53"></script>
-    <script src="./store.js?v=y53"></script>
-    <script src="./main.js?v=y53"></script>
-    <script src="./app.js?v=y53"></script>
-    <script src="./admin.js?v=y53"></script>
+    <script src="./i18n.js?v=y54"></script>
+    <script src="./mwbc-scheduler.js?v=y54"></script>
+    <script src="./supabase-client.js?v=y54"></script>
+    <script src="./store.js?v=y54"></script>
+    <script src="./main.js?v=y54"></script>
+    <script src="./app.js?v=y54"></script>
+    <script src="./admin.js?v=y54"></script>
     <!-- Cloudflare Web Analytics (privacy-friendly, no cookies) -->
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "710b4f76ce4046bf8204d4eea940ec01"}'></script>
     <!-- End Cloudflare Web Analytics -->
