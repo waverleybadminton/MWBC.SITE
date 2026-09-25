@@ -234,6 +234,41 @@
       return gid;
     },
 
+    // Create the same weekly booking for `weeks` occurrences in one go. Tries a
+    // single bulk insert (fast, even for a permanent ~2-year series); if that
+    // hits a clash, it falls back to week-by-week, skipping only the clashes.
+    async createSeries(b, weeks) {
+      const start = timeToMin(b.time);
+      const end = start + Number(b.duration);
+      const price = Math.round(b.pricePerCourtCents || 0);
+      const courtNums = b.courts.map(courtNum);
+      const shift = (iso, n) => {
+        const d = new Date(iso + "T12:00:00");
+        d.setDate(d.getDate() + n);
+        return d.toISOString().slice(0, 10);
+      };
+      const groups = [];
+      for (let i = 0; i < weeks; i++) {
+        const date = shift(b.date, 7 * i);
+        const gid = uuid();
+        groups.push(courtNums.map((c) => ({
+          group_id: gid, court: c, booking_date: date, start_min: start, end_min: end,
+          customer_name: b.name || null, email: b.email || null, phone: b.phone || null,
+          status: (b.status || "Unpaid").toLowerCase(), source: "phone",
+          price_cents: price, notes: b.notes || null
+        })));
+      }
+      const { error } = await sb().from("bookings").insert(groups.flat());
+      if (!error) { await this._refresh(); return { made: weeks, skipped: 0 }; }
+      let made = 0, skipped = 0;
+      for (const rows of groups) {
+        const { error: e } = await sb().from("bookings").insert(rows);
+        if (e) skipped += 1; else made += 1;
+      }
+      await this._refresh();
+      return { made, skipped };
+    },
+
     // Edit a booking group atomically (staff). Throws on overlap.
     async updateBooking(groupId, b) {
       const start = timeToMin(b.time);

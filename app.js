@@ -206,8 +206,12 @@ function hasEnoughCourts(dateValue, time, duration, courtCount = selectedCourtCo
 }
 
 function maxBookingDate() {
+  // Bookable through the END OF NEXT WEEK (Mon–Sun weeks). A whole new week
+  // opens on the Monday of each new week, rather than sliding day-by-day.
   const d = new Date();
-  d.setDate(d.getDate() + 14); // bookings open 2 weeks ahead
+  const dow = d.getDay();                       // 0 Sun … 6 Sat
+  const daysToSunday = dow === 0 ? 0 : 7 - dow; // to the end of this week
+  d.setDate(d.getDate() + daysToSunday + 7);    // + all of next week
   const offset = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - offset).toISOString().slice(0, 10);
 }
@@ -513,6 +517,7 @@ function bindBookingForm() {
 }
 
 dateInput.min = isoToday();
+dateInput.max = maxBookingDate();
 dateInput.max = maxBookingDate();
 dateInput.value = isoToday();
 syncVisibleMonthToDate();

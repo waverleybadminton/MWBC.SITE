@@ -795,30 +795,28 @@ function bindManualBooking() {
           pricePerCourtCents: Math.round(computePrice(manualDate.value, time, duration) * 100)
         });
       } else {
-        // ---- Create (optionally repeating weekly) with the exact courts chosen ----
+        // ---- Create with the exact courts chosen (optionally repeating weekly) ----
         const weeks = Math.max(1, Number(manualRepeat && manualRepeat.value) || 1);
-        let made = 0;
-        let skipped = 0;
-        for (let i = 0; i < weeks; i++) {
-          const date = addDays(manualDate.value, 7 * i);
-          if (!courtsFree(date)) { skipped += 1; continue; }
-          try {
-            await window.MWBC_STORE.createManual({
-              ...details,
-              courts: chosenCourts,
-              date,
-              time,
-              duration,
-              pricePerCourtCents: Math.round(computePrice(date, time, duration) * 100)
-            });
-            made += 1;
-          } catch { skipped += 1; }
-        }
-        if (made === 0) { manualNote.textContent = conflictMsg; return; }
-        if (weeks > 1 && skipped > 0) {
-          window.alert(isChinese()
-            ? `已预订 ${made} 周，${skipped} 周因冲突跳过。`
-            : `Booked ${made} week(s); ${skipped} skipped due to conflicts.`);
+        const payload = {
+          ...details,
+          courts: chosenCourts,
+          date: manualDate.value,
+          time,
+          duration,
+          pricePerCourtCents: Math.round(computePrice(manualDate.value, time, duration) * 100)
+        };
+        if (weeks === 1) {
+          if (!courtsFree(manualDate.value)) { manualNote.textContent = conflictMsg; return; }
+          await window.MWBC_STORE.createManual(payload);
+        } else {
+          // Bulk-create the whole series (fast, even for a permanent one).
+          const res = await window.MWBC_STORE.createSeries(payload, weeks);
+          if (!res || res.made === 0) { manualNote.textContent = conflictMsg; return; }
+          if (res.skipped > 0) {
+            window.alert(isChinese()
+              ? `已预订 ${res.made} 周，${res.skipped} 周因冲突跳过。`
+              : `Booked ${res.made} week(s); ${res.skipped} skipped due to conflicts.`);
+          }
         }
       }
 

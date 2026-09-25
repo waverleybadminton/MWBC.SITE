@@ -395,6 +395,8 @@
     "School (a shade each)": "学校（各一色）",
     "Couldn't save. Please try again.": "保存失败，请重试。",
     "Weekly for 6 months": "每周，持续 6 个月",
+    "Weekly for 12 months": "每周，持续 12 个月",
+    "Ongoing — repeat forever": "长期——永久重复",
     "Long-term — weekly for 12 months": "长期——每周，持续 12 个月",
     "Customers": "客户",
     "Total paid": "已付总额",
