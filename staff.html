@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y54">
+    <link rel="stylesheet" href="./styles.css?v=y55">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -804,20 +804,10 @@
                   Email
                   <input id="manual-email" type="email" placeholder="booking.mwbc@gmail.com">
                 </label>
-                <label>
-                  Court
-                  <select id="manual-court"></select>
-                  <small class="field-note">Leave on Auto to allocate the best available court.</small>
-                </label>
-                <label>
-                  Number of courts
-                  <select id="manual-court-count">
-                    <option value="1">1 court</option>
-                    <option value="2">2 courts</option>
-                    <option value="3">3 courts</option>
-                    <option value="4">4 courts</option>
-                  </select>
-                  <small class="field-note">For 5+ courts, use enquiry/group booking.</small>
+                <label class="courts-picker-label">
+                  Courts
+                  <div id="manual-courts-grid" class="courts-picker" role="group" aria-label="Choose courts"></div>
+                  <small class="field-note">Tick each court you want (pick several for a group). Greyed = already booked at that time.</small>
                 </label>
                 <label>
                   Date
@@ -1096,13 +1086,13 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y54"></script>
-    <script src="./mwbc-scheduler.js?v=y54"></script>
-    <script src="./supabase-client.js?v=y54"></script>
-    <script src="./store.js?v=y54"></script>
-    <script src="./main.js?v=y54"></script>
-    <script src="./app.js?v=y54"></script>
-    <script src="./admin.js?v=y54"></script>
+    <script src="./i18n.js?v=y55"></script>
+    <script src="./mwbc-scheduler.js?v=y55"></script>
+    <script src="./supabase-client.js?v=y55"></script>
+    <script src="./store.js?v=y55"></script>
+    <script src="./main.js?v=y55"></script>
+    <script src="./app.js?v=y55"></script>
+    <script src="./admin.js?v=y55"></script>
     <!-- Cloudflare Web Analytics (privacy-friendly, no cookies) -->
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "710b4f76ce4046bf8204d4eea940ec01"}'></script>
     <!-- End Cloudflare Web Analytics -->

@@ -386,6 +386,8 @@
     "Student": "学生",
     "Type": "类型",
     "Customer type": "客户类型",
+    "Courts": "场地",
+    "booked": "已订",
     "Remembered for this customer — colours all their bookings.": "记住该客户——其所有预订均用此颜色。",
     "— none —": "— 无 —",
     "Dot:": "圆点：",

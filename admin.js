@@ -16,8 +16,8 @@ const selectedDayLabel = document.querySelector("#selected-day-label");
 const selectedDaySubtitle = document.querySelector("#selected-day-subtitle");
 const manualForm = document.querySelector("#manual-booking-form");
 const manualDate = document.querySelector("#manual-date");
-const manualCourt = document.querySelector("#manual-court");
-const manualCourtCount = document.querySelector("#manual-court-count");
+const manualCourtsGrid = document.querySelector("#manual-courts-grid");
+let manualSelectedCourts = [];   // court names the staff has ticked for this booking
 const manualTime = document.querySelector("#manual-time");
 const manualDuration = document.querySelector("#manual-duration");
 const manualStatus = document.querySelector("#manual-status");
@@ -37,6 +37,7 @@ const bookingsListTitle = document.querySelector("#bookings-list-title");
 const bookingsListShell = document.querySelector("#bookings-list");
 let listScope = "day";        // "day" | "all"
 let lastScrolledDate = null;  // so we only auto-scroll when the day changes
+let draggingId = null;        // group_id of the booking currently being dragged
 const manualModal = document.querySelector("#manual-modal");
 const closeManualModalButton = document.querySelector("#close-manual-modal");
 const manualModalBackdrop = document.querySelector("#manual-modal-backdrop");
@@ -267,7 +268,7 @@ function resetModalFields() {
   document.querySelector("#manual-phone").value = "";
   document.querySelector("#manual-email").value = "";
   document.querySelector("#manual-notes").value = "";
-  manualCourtCount.value = "1";
+  manualSelectedCourts = [];
   manualStatus.value = "Unpaid";
   if (manualType) manualType.value = "";
   if (manualRepeat) manualRepeat.value = "1";
@@ -291,12 +292,11 @@ function openEditModal(booking) {
   document.querySelector("#manual-phone").value = booking.phone || "";
   document.querySelector("#manual-email").value = booking.email || "";
   document.querySelector("#manual-notes").value = booking.notes || "";
-  manualCourtCount.value = String(booking.courtCount || bookingCourts(booking).length || 1);
-  renderManualOptions();
-  manualCourt.value = bookingCourts(booking)[0] || "auto";
+  manualSelectedCourts = bookingCourts(booking).slice();
   manualDate.value = booking.date;
   manualTime.value = booking.time;
   manualDuration.value = String(booking.duration);
+  renderManualOptions();
   manualStatus.value = booking.status === "Paid" ? "Paid" : (booking.status === "Hold" ? "Hold" : "Unpaid");
   if (manualType) manualType.value = tagFor(booking);
   if (manualRepeatField) manualRepeatField.hidden = true;   // no recurring while editing
@@ -311,14 +311,15 @@ function openEditModal(booking) {
 function quickBookCell(court, time) {
   resetModalFields();
   manualDate.value = adminDate.value;
-  manualCourt.value = court;
   manualTime.value = time;
   manualDuration.value = "60";
+  manualSelectedCourts = [court];
+  renderManualOptions();
   const end = timeFromMinutes(minutesFromTime(time) + 60);
   manualBookingTitle.textContent = `${displayCourt(court)} · ${displayTime(time)}-${displayTime(end)}`;
   manualNote.textContent = isChinese()
-    ? "可在下方调整时长与场地数量。"
-    : "Adjust duration or number of courts below.";
+    ? "在下方勾选所需场地，可多选。"
+    : "Tick the courts you want below — you can pick several.";
   openModal();
 }
 
@@ -326,12 +327,12 @@ function quickBookCell(court, time) {
 function openBlankModal() {
   resetModalFields();
   manualDate.value = adminDate.value;
-  manualCourt.value = "auto";
   const times = getScheduleTimes();
   const bookings = selectedDateBookings();
   const firstFree = times.find((time) => !isCourtOccupied(bookings, courts[0], time)) || times[0];
   manualTime.value = firstFree;
   manualDuration.value = "60";
+  renderManualOptions();
   manualBookingTitle.textContent = t("New booking");
   openModal();
 }
@@ -401,6 +402,40 @@ function renderDayTabs() {
 // Grid is transposed: courts run across the columns, times down the rows, so
 // the time label sits on the same row (sticky at the left) as every court —
 // which makes it hard to misread the time even for courts 13/14 on the right.
+// Drag a booking onto an empty cell → move it there (new court + time).
+// The block re-anchors starting at the dropped court; price recomputes.
+async function moveBooking(groupId, targetCourt, targetTime) {
+  const booking = readBookings().find((b) => b.id === groupId);
+  if (!booking || booking.source === "School") return;
+  const count = bookingCourts(booking).length || 1;
+  const dur = Number(booking.duration);
+  const date = adminDate.value;
+  if (count === 1 && bookingCourts(booking)[0] === targetCourt && booking.time === targetTime) return;
+  const assigned = allocateManualCourts(date, targetTime, dur, targetCourt, count, groupId);
+  if (assigned.length < count) {
+    window.alert(isChinese() ? "该位置空闲场地不足。" : "Not enough free courts there.");
+    return;
+  }
+  try {
+    await window.MWBC_STORE.updateBooking(groupId, {
+      name: booking.name || t("Reserved"),
+      phone: booking.phone || "",
+      email: booking.email || "",
+      status: booking.status,
+      notes: booking.notes || "",
+      courts: assigned,
+      date,
+      time: targetTime,
+      duration: dur,
+      source: booking.source === "Online" ? "online" : "phone",
+      stripeSessionId: booking.stripeSessionId || "",
+      pricePerCourtCents: Math.round(computePrice(date, targetTime, dur) * 100)
+    });
+  } catch {
+    window.alert(isChinese() ? "移动失败，请重试。" : "Couldn't move that booking.");
+  }
+}
+
 function renderSchedule() {
   const times = getScheduleTimes();
   const bookings = selectedDateBookings();
@@ -452,7 +487,21 @@ function renderSchedule() {
         ? `预订 ${displayCourt(court)} ${displayTime(time)}`
         : `Book ${court} at ${displayTime(time)}`);
       cell.disabled = occupied;
-      if (!occupied) cell.addEventListener("click", () => quickBookCell(court, time));
+      if (!occupied) {
+        cell.addEventListener("click", () => quickBookCell(court, time));
+        cell.addEventListener("dragover", (e) => {
+          if (!draggingId) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          cell.classList.add("drop-hover");
+        });
+        cell.addEventListener("dragleave", () => cell.classList.remove("drop-hover"));
+        cell.addEventListener("drop", (e) => {
+          e.preventDefault();
+          cell.classList.remove("drop-hover");
+          if (draggingId) moveBooking(draggingId, cell.dataset.court, cell.dataset.time);
+        });
+      }
       schedule.append(cell);
     });
   });
@@ -482,6 +531,21 @@ function renderSchedule() {
         : `Edit booking: ${booking.name}, ${court} at ${displayTime(booking.time)}`);
       block.innerHTML = bookingBlockHTML(booking, court);
       block.addEventListener("click", () => openEditModal(booking));
+      // Drag to move (desktop). Schools are managed in their own modal.
+      if (booking.source !== "School") {
+        block.draggable = true;
+        block.addEventListener("dragstart", (e) => {
+          draggingId = booking.id;
+          e.dataTransfer.effectAllowed = "move";
+          try { e.dataTransfer.setData("text/plain", booking.id); } catch { /* Safari */ }
+          block.classList.add("dragging");
+        });
+        block.addEventListener("dragend", () => {
+          draggingId = null;
+          block.classList.remove("dragging");
+          document.querySelectorAll(".schedule-cell.drop-hover").forEach((c) => c.classList.remove("drop-hover"));
+        });
+      }
       schedule.append(block);
     });
   });
@@ -624,12 +688,41 @@ function renderBookings() {
 }
 
 function renderManualOptions() {
-  const selectedCourt = manualCourt.value;
-  manualCourt.innerHTML = `<option value="auto">${t("Auto — best available")}</option>` + courts.map((court) => `<option value="${court}">${displayCourt(court)}</option>`).join("");
-  if (selectedCourt === "auto" || courts.includes(selectedCourt)) manualCourt.value = selectedCourt;
   const selectedTime = manualTime.value;
   manualTime.innerHTML = getScheduleTimes().map((time) => `<option value="${time}">${displayTime(time)}</option>`).join("");
   if (getScheduleTimes().includes(selectedTime)) manualTime.value = selectedTime;
+  renderCourtsGrid();
+}
+
+// A grid of 14 court toggles — tick the exact courts you want. Courts already
+// booked for the chosen time show greyed out.
+function renderCourtsGrid() {
+  if (!manualCourtsGrid) return;
+  const date = manualDate.value;
+  const time = manualTime && manualTime.value;
+  const dur = Number(manualDuration && manualDuration.value) || 60;
+  const startMin = time ? minutesFromTime(time) : null;
+  manualCourtsGrid.innerHTML = "";
+  courts.forEach((court) => {
+    const busy = startMin != null && readBookings().some((b) =>
+      b.id !== editingGroupId && b.date === date && bookingCourts(b).includes(court)
+      && overlaps(startMin, dur, minutesFromTime(b.time), b.duration));
+    const selected = manualSelectedCourts.includes(court);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "court-pick" + (selected ? " selected" : "") + (busy && !selected ? " busy" : "");
+    btn.textContent = courtNumber(court);
+    btn.disabled = busy && !selected;
+    btn.setAttribute("aria-pressed", selected ? "true" : "false");
+    btn.title = displayCourt(court) + (busy && !selected ? " — " + t("booked") : "");
+    btn.addEventListener("click", () => {
+      const i = manualSelectedCourts.indexOf(court);
+      if (i >= 0) manualSelectedCourts.splice(i, 1);
+      else manualSelectedCourts.push(court);
+      renderCourtsGrid();
+    });
+    manualCourtsGrid.append(btn);
+  });
 }
 
 function hasConflict(candidate) {
@@ -656,13 +749,16 @@ function allocateManualCourts(date, time, duration, firstCourt, count, excludeId
 }
 
 function bindManualBooking() {
+  // Re-grey the courts grid when the time/date/duration changes.
+  [manualDate, manualTime, manualDuration].forEach((el) => el && el.addEventListener("change", renderCourtsGrid));
+
   manualForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!manualForm.reportValidity()) return;
 
-    const courtCount = Number(manualCourtCount.value || 1);
     const time = manualTime.value;
     const duration = manualDuration.value;
+    const chosenCourts = manualSelectedCourts.slice();
     const details = {
       name: document.querySelector("#manual-name").value.trim() || t("Reserved"),
       phone: document.querySelector("#manual-phone").value.trim(),
@@ -670,24 +766,27 @@ function bindManualBooking() {
       status: manualStatus.value,
       notes: document.querySelector("#manual-notes").value.trim()
     };
+    if (!chosenCourts.length) {
+      manualNote.textContent = isChinese() ? "请至少选择一片场地。" : "Pick at least one court.";
+      return;
+    }
     const conflictMsg = isChinese()
-      ? "该场地在此时段已被预订，请重新选择。"
-      : "That court is already booked at this time. Pick another slot.";
-    const noCourtsMsg = (n) => isChinese()
-      ? `该时段仅有 ${n} 片场地可用。请选择其他时间或减少场地数量。`
-      : `Only ${n} court(s) free at that time. Pick another time or reduce the court count.`;
+      ? "所选场地在此时段已被预订，请重新选择。"
+      : "One of those courts is already booked at that time. Pick another slot.";
+    // Are all the chosen courts free on `date` for this time/duration?
+    const courtsFree = (date) => chosenCourts.every((court) => !readBookings().some((b) =>
+      b.id !== editingGroupId && b.date === date && bookingCourts(b).includes(court)
+      && overlaps(minutesFromTime(time), Number(duration), minutesFromTime(b.time), b.duration)));
 
     if (manualSubmit) manualSubmit.disabled = true;
     manualNote.textContent = t("Saving…");
 
     try {
       if (editingGroupId) {
-        // ---- Edit existing booking ----
-        const assigned = allocateManualCourts(manualDate.value, time, duration, manualCourt.value, courtCount, editingGroupId);
-        if (assigned.length < courtCount) { manualNote.textContent = noCourtsMsg(assigned.length); return; }
+        // ---- Edit existing booking (explicit courts) ----
         await window.MWBC_STORE.updateBooking(editingGroupId, {
           ...details,
-          courts: assigned,
+          courts: chosenCourts,
           date: manualDate.value,
           time,
           duration,
@@ -696,18 +795,17 @@ function bindManualBooking() {
           pricePerCourtCents: Math.round(computePrice(manualDate.value, time, duration) * 100)
         });
       } else {
-        // ---- Create (optionally repeating weekly) ----
+        // ---- Create (optionally repeating weekly) with the exact courts chosen ----
         const weeks = Math.max(1, Number(manualRepeat && manualRepeat.value) || 1);
         let made = 0;
         let skipped = 0;
         for (let i = 0; i < weeks; i++) {
           const date = addDays(manualDate.value, 7 * i);
-          const assigned = allocateManualCourts(date, time, duration, manualCourt.value, courtCount);
-          if (assigned.length < courtCount) { skipped += 1; continue; }
+          if (!courtsFree(date)) { skipped += 1; continue; }
           try {
             await window.MWBC_STORE.createManual({
               ...details,
-              courts: assigned,
+              courts: chosenCourts,
               date,
               time,
               duration,
@@ -716,7 +814,7 @@ function bindManualBooking() {
             made += 1;
           } catch { skipped += 1; }
         }
-        if (made === 0) { manualNote.textContent = weeks > 1 ? noCourtsMsg(0) : conflictMsg; return; }
+        if (made === 0) { manualNote.textContent = conflictMsg; return; }
         if (weeks > 1 && skipped > 0) {
           window.alert(isChinese()
             ? `已预订 ${made} 周，${skipped} 周因冲突跳过。`
