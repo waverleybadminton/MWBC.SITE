@@ -59,6 +59,7 @@
           notes: r.notes || "",
           stripeSessionId: r.stripe_session_id || null,
           schoolId: r.school_id || null,
+          seriesId: r.series_id || null,
           createdAt: r.created_at
         };
         map.set(r.group_id, g);
@@ -237,11 +238,12 @@
     // Create the same weekly booking for `weeks` occurrences in one go. Tries a
     // single bulk insert (fast, even for a permanent ~2-year series); if that
     // hits a clash, it falls back to week-by-week, skipping only the clashes.
-    async createSeries(b, weeks) {
+    async createSeries(b, weeks, existingSeriesId) {
       const start = timeToMin(b.time);
       const end = start + Number(b.duration);
       const price = Math.round(b.pricePerCourtCents || 0);
       const courtNums = b.courts.map(courtNum);
+      const seriesId = existingSeriesId || uuid();
       const shift = (iso, n) => {
         const d = new Date(iso + "T12:00:00");
         d.setDate(d.getDate() + n);
@@ -255,7 +257,7 @@
           group_id: gid, court: c, booking_date: date, start_min: start, end_min: end,
           customer_name: b.name || null, email: b.email || null, phone: b.phone || null,
           status: (b.status || "Unpaid").toLowerCase(), source: "phone",
-          price_cents: price, notes: b.notes || null
+          price_cents: price, notes: b.notes || null, series_id: seriesId
         })));
       }
       const { error } = await sb().from("bookings").insert(groups.flat());
@@ -287,6 +289,13 @@
         p_notes: b.notes || "",
         p_session_id: b.stripeSessionId || ""
       });
+      if (error) throw error;
+      await this._refresh();
+    },
+
+    // Delete every occurrence of a long-term series (all weeks).
+    async removeSeries(seriesId) {
+      const { error } = await sb().from("bookings").delete().eq("series_id", seriesId);
       if (error) throw error;
       await this._refresh();
     },

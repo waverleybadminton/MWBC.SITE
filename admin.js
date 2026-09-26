@@ -922,6 +922,98 @@ function renderCustomers() {
   });
 }
 
+/* ---------- long-term (recurring) bookings ---------- */
+
+// Group booking occurrences by series_id into long-term series, sorted by end
+// date (soonest-ending first, so staff re-book before they lapse).
+function buildSeries() {
+  const bySeries = new Map();
+  readBookings().forEach((b) => {
+    if (!b.seriesId) return;
+    let s = bySeries.get(b.seriesId);
+    if (!s) { s = []; bySeries.set(b.seriesId, s); }
+    s.push(b);
+  });
+  const today = isoToday();
+  const list = [];
+  bySeries.forEach((occ, seriesId) => {
+    if (occ.length < 8) return; // only long-term series
+    const sorted = occ.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const last = sorted[sorted.length - 1];
+    list.push({
+      seriesId,
+      name: last.name, phone: last.phone, email: last.email,
+      courts: bookingCourts(last), time: last.time, duration: last.duration,
+      startDate: sorted[0].date, endDate: last.date,
+      total: sorted.length,
+      weeksLeft: sorted.filter((o) => o.date >= today).length
+    });
+  });
+  return list.sort((a, b) => a.endDate.localeCompare(b.endDate));
+}
+
+function renderSeries() {
+  const body = document.querySelector("#series-body");
+  if (!body) return;
+  const series = buildSeries();
+  body.innerHTML = "";
+  if (!series.length) {
+    body.innerHTML = `<tr><td colspan="6">${t("No long-term bookings yet.")}</td></tr>`;
+    return;
+  }
+  series.forEach((s) => {
+    const weekday = new Intl.DateTimeFormat(i18n?.locale() || "en-AU", { weekday: "short" })
+      .format(new Date(`${s.startDate}T12:00:00`));
+    const ending = s.weeksLeft <= 4;
+    const tr = document.createElement("tr");
+    if (ending) tr.className = "series-ending";
+    tr.innerHTML = `
+      <td>${escapeHtml(s.name || t("(no name)"))}${s.phone ? `<br><span class="muted">${escapeHtml(s.phone)}</span>` : ""}</td>
+      <td>${s.courts.map(displayCourt).join(isChinese() ? "、" : ", ")}</td>
+      <td>${escapeHtml(weekday)} ${escapeHtml(displayTime(s.time))}</td>
+      <td>${s.weeksLeft}</td>
+      <td>${escapeHtml(displayDate(s.endDate, { short: true }))}</td>
+      <td class="table-actions">
+        <button class="table-action" type="button" data-series-extend="${s.seriesId}">${t("Extend +1 year")}</button>
+        <button class="table-action danger" type="button" data-series-remove="${s.seriesId}">${t("Remove")}</button>
+      </td>`;
+    body.append(tr);
+  });
+  body.querySelectorAll("[data-series-extend]").forEach((b) => b.addEventListener("click", () => extendSeries(b.dataset.seriesExtend)));
+  body.querySelectorAll("[data-series-remove]").forEach((b) => b.addEventListener("click", () => removeSeriesConfirm(b.dataset.seriesRemove)));
+}
+
+async function extendSeries(seriesId) {
+  const s = buildSeries().find((x) => x.seriesId === seriesId);
+  if (!s) return;
+  const startDate = addDays(s.endDate, 7);
+  if (!window.confirm(isChinese()
+    ? `将 ${s.name || "该客户"} 的长期预订再延续 1 年（每周 ${s.courts.map(displayCourt).join("、")}，从 ${startDate} 起）？`
+    : `Extend ${s.name || "this"} booking by another year — weekly ${s.courts.map(displayCourt).join(", ")}, from ${startDate}?`)) return;
+  try {
+    const res = await window.MWBC_STORE.createSeries({
+      name: s.name, phone: s.phone, email: s.email, status: "Unpaid", notes: "",
+      courts: s.courts, date: startDate, time: s.time, duration: s.duration,
+      pricePerCourtCents: Math.round(computePrice(startDate, s.time, s.duration) * 100)
+    }, 52, seriesId);
+    if (res && res.skipped > 0) {
+      window.alert(isChinese()
+        ? `已延续 ${res.made} 周，${res.skipped} 周因冲突跳过。`
+        : `Extended ${res.made} week(s); ${res.skipped} skipped due to conflicts.`);
+    }
+  } catch { window.alert(isChinese() ? "延续失败，请重试。" : "Couldn't extend. Please try again."); }
+}
+
+async function removeSeriesConfirm(seriesId) {
+  const s = buildSeries().find((x) => x.seriesId === seriesId);
+  const label = s ? `\n\n${s.name || ""} · ${s.courts.map(displayCourt).join(", ")}` : "";
+  if (!window.confirm((isChinese()
+    ? "删除整个长期预订（包含所有周）？此操作无法撤销。"
+    : "Remove this entire long-term booking (all its weeks)? This can't be undone.") + label)) return;
+  try { await window.MWBC_STORE.removeSeries(seriesId); }
+  catch { window.alert(isChinese() ? "删除失败，请重试。" : "Couldn't remove. Please try again."); }
+}
+
 function renderAll() {
   manualDate.value = adminDate.value;
   renderManualOptions();
@@ -930,6 +1022,7 @@ function renderAll() {
   renderBookings();
   renderSchoolList();
   renderCustomers();
+  renderSeries();
 }
 
 /* ---------- school bookings ---------- */

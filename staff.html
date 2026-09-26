@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y56">
+    <link rel="stylesheet" href="./styles.css?v=y57">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -862,10 +862,9 @@
                     <option value="8">Weekly for 8 weeks</option>
                     <option value="12">Weekly for 12 weeks</option>
                     <option value="26">Weekly for 6 months</option>
-                    <option value="52">Weekly for 12 months</option>
-                    <option value="104">Ongoing — repeat forever</option>
+                    <option value="52">Long-term — weekly for 1 year</option>
                   </select>
-                  <small class="field-note">Repeats the same time and courts weekly. "Ongoing" books about 2 years ahead in one go; re-book to extend.</small>
+                  <small class="field-note">Repeats the same time and courts weekly. Long-term books 1 year ahead; it shows in "Long-term bookings" so you can extend before it ends.</small>
                 </label>
                 <label class="manual-notes">
                   Notes
@@ -1026,6 +1025,28 @@
               </div>
             </div>
 
+            <div class="admin-table-shell">
+              <div class="admin-section-title">
+                <h2>Long-term bookings</h2>
+                <p class="field-note">Sorted by soonest to end — extend the ones near the top before they run out.</p>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Courts</th>
+                      <th>Day &amp; time</th>
+                      <th>Weeks left</th>
+                      <th>Ends</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="series-body"></tbody>
+                </table>
+              </div>
+            </div>
+
             <div class="admin-table-shell customers-shell">
               <div class="admin-section-title list-title">
                 <h2>Customers</h2>
@@ -1087,13 +1108,13 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y56"></script>
-    <script src="./mwbc-scheduler.js?v=y56"></script>
-    <script src="./supabase-client.js?v=y56"></script>
-    <script src="./store.js?v=y56"></script>
-    <script src="./main.js?v=y56"></script>
-    <script src="./app.js?v=y56"></script>
-    <script src="./admin.js?v=y56"></script>
+    <script src="./i18n.js?v=y57"></script>
+    <script src="./mwbc-scheduler.js?v=y57"></script>
+    <script src="./supabase-client.js?v=y57"></script>
+    <script src="./store.js?v=y57"></script>
+    <script src="./main.js?v=y57"></script>
+    <script src="./app.js?v=y57"></script>
+    <script src="./admin.js?v=y57"></script>
     <!-- Cloudflare Web Analytics (privacy-friendly, no cookies) -->
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "710b4f76ce4046bf8204d4eea940ec01"}'></script>
     <!-- End Cloudflare Web Analytics -->

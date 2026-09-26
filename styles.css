@@ -1589,6 +1589,11 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .court-pick.selected { background: var(--blue); color: #fff; border-color: var(--blue); }
 .court-pick.busy { background: #eef1f4; color: #aab3bd; cursor: not-allowed; }
 
+/* ---------- Long-term bookings panel ---------- */
+.series-ending { background: #fff5e6; }
+.series-ending td:first-child { box-shadow: inset 4px 0 0 #f2b134; }
+td .muted { color: var(--ink-soft); font-size: 0.8rem; }
+
 /* ---------- Customers panel ---------- */
 .customers-shell .customer-search { margin-left: auto; padding: 0.45rem 0.7rem; border: 1px solid #cfd6dd; border-radius: 8px; font-size: 0.86rem; min-width: 220px; max-width: 320px; }
 
