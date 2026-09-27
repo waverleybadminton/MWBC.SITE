@@ -321,16 +321,23 @@
     },
 
     // Delete every occurrence of a long-term series (all weeks).
+    // Returns the deleted row rows and throws if the delete removed nothing
+    // (e.g. an expired session or RLS mismatch silently deleting 0 rows) so a
+    // "deleted" booking can never linger unnoticed.
     async removeSeries(seriesId) {
-      const { error } = await sb().from("bookings").delete().eq("series_id", seriesId);
+      const { data, error } = await sb().from("bookings").delete().eq("series_id", seriesId).select("id");
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("nothing_deleted");
       await this._refresh();
+      return data.length;
     },
 
     async remove(groupId) {
-      const { error } = await sb().from("bookings").delete().eq("group_id", groupId);
+      const { data, error } = await sb().from("bookings").delete().eq("group_id", groupId).select("id");
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("nothing_deleted");
       await this._refresh();
+      return data.length;
     },
 
     // Create a school booking (many sessions) in one transaction. Staff only.
@@ -395,10 +402,14 @@
       return error ? [] : (data || []);
     },
 
+    // Deleting the parent school_bookings row cascades to its bookings rows
+    // (ON DELETE CASCADE), so every court it held is freed in one atomic step.
     async removeSchoolBooking(schoolId) {
-      const { error } = await sb().from("school_bookings").delete().eq("id", schoolId);
+      const { data, error } = await sb().from("school_bookings").delete().eq("id", schoolId).select("id");
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("nothing_deleted");
       await this._refresh();
+      return data.length;
     },
 
     // Refund the customer (payment minus the $5 fee) and free the court. Staff only.
