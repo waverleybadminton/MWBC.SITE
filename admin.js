@@ -366,6 +366,19 @@ async function deleteBooking(id) {
   const b = readBookings().find((item) => item.id === id);
   if (!b) return;
   const label = `${b.name || t("(no name)")} · ${displayDate(b.date, { short: true })} ${displayTime(b.time)}`;
+  // Recurring booking → offer to remove the whole series (all weeks), so a
+  // long-term booking never leaves orphaned weeks behind.
+  if (b.seriesId) {
+    const whole = window.confirm(isChinese()
+      ? `这是长期（每周重复）预订。\n\n点击“确定” = 删除整个长期预订（所有周）\n点击“取消” = 只删除这一周\n\n${label}`
+      : `This is a recurring (weekly) booking.\n\nOK = remove the WHOLE series (every week)\nCancel = remove only this one week\n\n${label}`);
+    if (whole) {
+      try { await window.MWBC_STORE.removeSeries(b.seriesId); }
+      catch { window.alert(t("Couldn't delete. Please try again.")); }
+      return;
+    }
+    // Cancel → fall through and delete just this week (with the confirm below).
+  }
   const paidWarn = b.status === "Paid"
     ? t("This booking is marked PAID — deleting removes the record and does NOT refund the customer.") + "\n\n"
     : "";
