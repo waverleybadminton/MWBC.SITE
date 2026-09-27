@@ -153,11 +153,31 @@
       return !error && Array.isArray(data) && data.length > 0;
     },
 
+    // Load EVERY booking row, paging past PostgREST's 1000-row response cap.
+    // Without this, once the table exceeds 1000 rows the newest bookings are
+    // silently dropped from the cache — they don't render yet still occupy the
+    // slot, so re-entering them reports a phantom "already booked" conflict.
+    async _loadAllBookings(client) {
+      const PAGE = 1000;
+      let all = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await client
+          .from("bookings")
+          .select("*")
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) return { data: null, error };
+        all = all.concat(data || []);
+        if (!data || data.length < PAGE) break;
+      }
+      return { data: all, error: null };
+    },
+
     async _refresh() {
       const client = sb();
       if (!client) return;
       if (this._authed) {
-        const { data, error } = await client.from("bookings").select("*");
+        const { data, error } = await this._loadAllBookings(client);
         this._cache = error ? [] : groupRows(data || []);
         try {
           const { data: tags } = await client.from("customer_tags").select("contact_key, tag");
@@ -165,7 +185,14 @@
           (tags || []).forEach((r) => { if (r.tag) this._tags[r.contact_key] = r.tag; });
         } catch { this._tags = {}; }
       } else {
-        const { data, error } = await client.rpc("availability", {});
+        // Scope to the public booking window (2 weeks + buffer) so the busy-range
+        // result stays well under the 1000-row response cap.
+        const today = new Date();
+        const to = new Date(today.getTime() + 28 * 864e5);
+        const { data, error } = await client.rpc("availability", {
+          from_date: today.toISOString().slice(0, 10),
+          to_date: to.toISOString().slice(0, 10)
+        });
         this._cache = error ? [] : pseudoFromAvailability(data || []);
         this._tags = {};
       }
