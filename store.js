@@ -298,6 +298,23 @@
       return { made, skipped };
     },
 
+    // Turn an existing single booking into a weekly long-term series: stamp the
+    // existing group with a fresh series id (so it joins the Long-term panel and
+    // whole-series delete), then create the remaining weeks with that same id.
+    // `weeks` is the TOTAL count including the existing occurrence. Weeks that
+    // clash are skipped, never duplicated.
+    async makeRecurring(groupId, b, weeks) {
+      const total = Math.max(2, Number(weeks) || 2);
+      const seriesId = uuid();
+      const { error } = await sb().from("bookings").update({ series_id: seriesId }).eq("group_id", groupId);
+      if (error) throw error;
+      const d = new Date(b.date + "T12:00:00");
+      d.setDate(d.getDate() + 7);
+      const nextDate = d.toISOString().slice(0, 10);
+      const res = await this.createSeries({ ...b, date: nextDate }, total - 1, seriesId);
+      return { made: (res.made || 0) + 1, skipped: res.skipped || 0, seriesId };
+    },
+
     // Edit a booking group atomically (staff). Throws on overlap.
     async updateBooking(groupId, b) {
       const start = timeToMin(b.time);
