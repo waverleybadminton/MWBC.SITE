@@ -489,7 +489,8 @@ function bindBookingForm() {
           courts: slot.courts,
           name,
           email,
-          phone
+          phone,
+          lang: isChinese() ? "zh" : "en" // confirmation email + Stripe page language
         }
       });
       if (error) throw error;
