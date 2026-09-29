@@ -756,8 +756,11 @@ html[data-language="zh"] .segment-card h3 { text-transform: none; font-stretch: 
   background: var(--paper);
   color: var(--ink);
   border-bottom: 1px solid var(--line-soft);
-  padding: clamp(3rem, 8vw, 5rem) clamp(1.25rem, 4.5vw, 3rem);
+  padding: clamp(2.25rem, 6vw, 4rem) clamp(1.25rem, 4.5vw, 3rem) clamp(1.4rem, 3vw, 1.9rem);
 }
+
+/* The booking form sits directly under the rate strip — keep them close. */
+.booking-band { padding-top: clamp(1.25rem, 3vw, 1.75rem); }
 
 .page-head h1 { color: var(--ink); max-width: 16ch; }
 .page-sub { max-width: 36rem; font-size: 1.05rem; color: var(--ink-soft); margin-bottom: 1.4rem; }
@@ -792,6 +795,7 @@ html[data-language="zh"] .segment-card h3 { text-transform: none; font-stretch: 
   font-weight: 840;
   font-size: 1rem;
   color: var(--blue);
+  white-space: nowrap;
 }
 
 .rate-item span { font-size: 0.8rem; color: var(--ink-soft); }
