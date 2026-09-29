@@ -121,8 +121,8 @@ function openingHour(dateValue) {
 }
 
 function hourlyRate(dateValue, minutes) {
-  if (isWeekend(dateValue)) return 31;
-  return minutes >= 17 * 60 ? 31 : 22;
+  if (isWeekend(dateValue)) return 32;
+  return minutes >= 17 * 60 ? 32 : 22;
 }
 
 function computePrice(dateValue, time, duration) {

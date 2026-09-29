@@ -774,28 +774,27 @@ html[data-language="zh"] .segment-card h3 { text-transform: none; font-stretch: 
 
 .page-head.has-photo .shell { position: relative; }
 
-.rate-strip { display: grid; gap: 0.7rem; grid-template-columns: 1fr; margin-top: 1.6rem; }
+.rate-strip { display: flex; flex-wrap: wrap; gap: 0.35rem 1.4rem; margin-top: 1rem; }
 
 .rate-item {
   display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.9rem 1.1rem;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-m);
-  background: #fff;
-  box-shadow: var(--shadow-s);
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
 }
 
 .rate-item strong {
   font-family: var(--font-display);
   font-stretch: 116%;
   font-weight: 840;
-  font-size: 1.35rem;
+  font-size: 1rem;
   color: var(--blue);
 }
 
-.rate-item span { font-size: 0.86rem; color: var(--ink-soft); }
+.rate-item span { font-size: 0.8rem; color: var(--ink-soft); }
 
 /* ---------- forms ---------- */
 
@@ -1930,7 +1929,6 @@ html[data-language="zh"] .footer-tagline { text-transform: none; font-stretch: 1
 
 @media (min-width: 640px) {
   .field-grid, .booking-settings-grid { grid-template-columns: repeat(2, 1fr); }
-  .rate-strip { grid-template-columns: repeat(3, 1fr); }
   .segment-grid { grid-template-columns: repeat(2, 1fr); }
   .group-grid { grid-template-columns: repeat(2, 1fr); }
   .booking-summary { grid-template-columns: 1.6fr 1fr 0.8fr; align-items: center; }
@@ -1948,8 +1946,6 @@ html[data-language="zh"] .footer-tagline { text-transform: none; font-stretch: 1
   .cta-panel { grid-template-columns: 1.5fr 1fr; align-items: center; }
   .cta-panel-actions { justify-content: flex-end; }
   .footer-inner { grid-template-columns: 1.3fr 1fr; }
-  .booking-shell { grid-template-columns: 1.9fr 1fr; }
-  .policy-panel { position: sticky; top: calc(var(--nav-h) + 1.25rem); }
 }
 
 @media (min-width: 1200px) {
