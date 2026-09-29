@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y67">
+    <link rel="stylesheet" href="./styles.css?v=y68">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -771,7 +771,8 @@
                     <option value="Unpaid" selected>Unpaid</option>
                     <option value="Hold">Hold</option>
                   </select>
-                  <small class="field-note" id="split-note" hidden>Some of a shared booking is paid — e.g. a coach's block where students each pay their share. Note who still owes in the notes below.</small>
+                  <small class="field-note" id="split-note" hidden>Tap the hours that have been paid — e.g. a coach's block where students each pay their share. Paid hours show filled-in on the board.</small>
+                  <div class="split-hours" id="split-hours" hidden aria-label="Which hours are paid"></div>
                 </label>
                 <label>
                   Customer type
@@ -1041,13 +1042,13 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y67"></script>
-    <script src="./mwbc-scheduler.js?v=y67"></script>
-    <script src="./supabase-client.js?v=y67"></script>
-    <script src="./store.js?v=y67"></script>
-    <script src="./main.js?v=y67"></script>
-    <script src="./app.js?v=y67"></script>
-    <script src="./admin.js?v=y67"></script>
+    <script src="./i18n.js?v=y68"></script>
+    <script src="./mwbc-scheduler.js?v=y68"></script>
+    <script src="./supabase-client.js?v=y68"></script>
+    <script src="./store.js?v=y68"></script>
+    <script src="./main.js?v=y68"></script>
+    <script src="./app.js?v=y68"></script>
+    <script src="./admin.js?v=y68"></script>
     <!-- Cloudflare Web Analytics (privacy-friendly, no cookies) -->
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "710b4f76ce4046bf8204d4eea940ec01"}'></script>
     <!-- End Cloudflare Web Analytics -->

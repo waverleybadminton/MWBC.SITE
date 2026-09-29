@@ -1540,6 +1540,40 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 /* Paid = dark-grey box (set inline) + a thin type-coloured left stripe. */
 .booking-block.is-paid { box-shadow: inset 4px 0 0 var(--type-color, rgba(255,255,255,0.35)); }
 .booking-block.is-paid:hover { box-shadow: inset 4px 0 0 var(--type-color, rgba(255,255,255,0.35)), inset 0 0 0 2px rgba(255, 255, 255, 0.6); }
+/* Split payment: readable text over the mixed dark/colour fill + a paid-hours badge. */
+.booking-block.is-partial { justify-content: flex-start; padding-top: 3px; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55); }
+.bb-paid-tag {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #16202b;
+  text-shadow: none;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* Hour toggles in the booking modal (which hours are paid). */
+.split-hours { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.55rem; }
+.split-hour {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.split-hour:hover { border-color: var(--ink-soft); }
+.split-hour.is-paid { background: #3f4b56; border-color: #3f4b56; color: #fff; }
 .type-legend .type-legend-label { font-weight: 700; }
 .type-legend i { border-radius: 50%; }
 .type-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; box-shadow: 0 0 0 1px rgba(0,0,0,0.12); }

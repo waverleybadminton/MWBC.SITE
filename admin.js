@@ -22,9 +22,51 @@ const manualTime = document.querySelector("#manual-time");
 const manualDuration = document.querySelector("#manual-duration");
 const manualStatus = document.querySelector("#manual-status");
 const splitNote = document.querySelector("#split-note");
-// Show the split-payment hint only when "Partially paid (split)" is chosen.
+const splitHours = document.querySelector("#split-hours");
+// Absolute start-minutes of the 60-min segments marked paid on a split booking.
+let splitPaidMinutes = [];
+
+// Build one "paid?" toggle per hour of the booking, from the current time + duration.
+function renderSplitHours() {
+  if (!splitHours) return;
+  const startTime = manualTime && manualTime.value;
+  const dur = Number(manualDuration && manualDuration.value) || 0;
+  if (!startTime || !dur) { splitHours.innerHTML = ""; return; }
+  const start = minutesFromTime(startTime);
+  const paid = new Set(splitPaidMinutes);
+  let html = "";
+  for (let o = 0; o < dur; o += 60) {
+    const segStart = start + o;
+    const segLen = Math.min(60, dur - o);
+    const label = `${displayTime(timeFromMinutes(segStart))}–${displayTime(timeFromMinutes(segStart + segLen))}`;
+    const on = paid.has(segStart);
+    html += `<button type="button" class="split-hour${on ? " is-paid" : ""}" data-seg="${segStart}" aria-pressed="${on}">${label}</button>`;
+  }
+  splitHours.innerHTML = html;
+  splitHours.querySelectorAll(".split-hour").forEach((b) => b.addEventListener("click", () => {
+    const seg = Number(b.dataset.seg);
+    const i = splitPaidMinutes.indexOf(seg);
+    if (i >= 0) splitPaidMinutes.splice(i, 1); else splitPaidMinutes.push(seg);
+    renderSplitHours();
+  }));
+}
+
+// Show the hour toggles only when "Partially paid (split)" is chosen.
 function updateSplitNote() {
-  if (splitNote) splitNote.hidden = !(manualStatus && manualStatus.value === "Partial");
+  const isPartial = manualStatus && manualStatus.value === "Partial";
+  if (splitNote) splitNote.hidden = !isPartial;
+  if (splitHours) splitHours.hidden = !isPartial;
+  if (isPartial) renderSplitHours();
+}
+
+// Keep only paid segments that still fall inside the booking's time range.
+function validSplitMinutes() {
+  if (!manualTime || !manualDuration) return [];
+  const start = minutesFromTime(manualTime.value);
+  const dur = Number(manualDuration.value) || 0;
+  const valid = [];
+  for (let o = 0; o < dur; o += 60) if (splitPaidMinutes.includes(start + o)) valid.push(start + o);
+  return valid;
 }
 const manualType = document.querySelector("#manual-type");
 const manualNote = document.querySelector("#manual-note");
@@ -205,6 +247,30 @@ function bookingBoxColor(booking) {
   if (tag && CUSTOMER_TYPE_MAP[tag]) return CUSTOMER_TYPE_MAP[tag].color;
   return "#6b7a8f"; // untagged
 }
+// Split-payment fill: each hour of the block is dark (paid) or the customer's
+// colour (still owing), as a hard-stop vertical gradient — so the board shows
+// exactly which hours are settled.
+function partialGradient(booking, unpaidColor) {
+  const start = minutesFromTime(booking.time);
+  const dur = Number(booking.duration) || 0;
+  const paid = new Set(booking.paidMinutes || []);
+  const stops = [];
+  for (let o = 0; o < dur; o += 60) {
+    const segLen = Math.min(60, dur - o);
+    const from = ((o / dur) * 100).toFixed(2);
+    const to = (((o + segLen) / dur) * 100).toFixed(2);
+    stops.push(`${paid.has(start + o) ? "#3f4b56" : unpaidColor} ${from}% ${to}%`);
+  }
+  return `linear-gradient(to bottom, ${stops.join(", ")})`;
+}
+function paidHourCount(booking) {
+  const start = minutesFromTime(booking.time);
+  const dur = Number(booking.duration) || 0;
+  const paid = new Set(booking.paidMinutes || []);
+  let n = 0, total = 0;
+  for (let o = 0; o < dur; o += 60) { total += 1; if (paid.has(start + o)) n += 1; }
+  return { paid: n, total };
+}
 // Small "who booked" dot: white = online, navy = booked by us. Schools: none.
 function sourceDotColor(booking) {
   if (booking.source === "School") return "";
@@ -277,6 +343,7 @@ function resetModalFields() {
   document.querySelector("#manual-notes").value = "";
   manualSelectedCourts = [];
   manualStatus.value = "Unpaid";
+  splitPaidMinutes = [];
   updateSplitNote();
   if (manualType) manualType.value = "";
   if (manualRepeat) manualRepeat.value = "1";
@@ -307,6 +374,7 @@ function openEditModal(booking) {
   manualDuration.value = String(booking.duration);
   renderManualOptions();
   manualStatus.value = ["Paid", "Partial", "Hold"].includes(booking.status) ? booking.status : "Unpaid";
+  splitPaidMinutes = Array.isArray(booking.paidMinutes) ? booking.paidMinutes.slice() : [];
   updateSplitNote();
   if (manualType) manualType.value = tagFor(booking);
   // A one-off booking can be turned into a weekly long-term booking from here.
@@ -544,9 +612,12 @@ function renderSchedule() {
       const isPaid = booking.status === "Paid";
       const isPartial = booking.status === "Partial";
       const boxColor = bookingBoxColor(booking);
+      const hasPaidHours = isPartial && Array.isArray(booking.paidMinutes) && booking.paidMinutes.length > 0;
       block.className = "booking-block" + (isPaid ? " is-paid" : "") + (isPartial ? " is-partial" : "");
-      // paid = dark grey, partial/split = medium slate, otherwise the type colour
-      block.style.background = isPaid ? "#3f4b56" : (isPartial ? "#7c8896" : boxColor);
+      // paid = dark grey; split = per-hour dark/colour fill; else the type colour
+      block.style.background = isPaid ? "#3f4b56"
+        : hasPaidHours ? partialGradient(booking, boxColor)
+        : (isPartial ? "#7c8896" : boxColor);
       block.style.setProperty("--type-color", boxColor);              // thin stripe on paid/partial
       block.style.color = blockNeedsDarkText(booking) ? "#16202b" : "#fff";
       block.style.gridColumn = `${courtIndex + 2}`;
@@ -558,6 +629,13 @@ function renderSchedule() {
         ? `编辑预订：${booking.name}，${displayCourt(court)}，${displayTime(booking.time)}`
         : `Edit booking: ${booking.name}, ${court} at ${displayTime(booking.time)}`);
       block.innerHTML = bookingBlockHTML(booking, court);
+      if (isPartial) {
+        const pc = paidHourCount(booking);
+        const tag = document.createElement("span");
+        tag.className = "bb-paid-tag";
+        tag.textContent = isChinese() ? `已付 ${pc.paid}/${pc.total}h` : `${pc.paid}/${pc.total}h paid`;
+        block.appendChild(tag);
+      }
       block.addEventListener("click", () => openEditModal(booking));
       // Drag to move (desktop). Schools are managed in their own modal.
       if (booking.source !== "School") {
@@ -780,6 +858,9 @@ function bindManualBooking() {
   // Re-grey the courts grid when the time/date/duration changes.
   [manualDate, manualTime, manualDuration].forEach((el) => el && el.addEventListener("change", renderCourtsGrid));
   if (manualStatus) manualStatus.addEventListener("change", updateSplitNote);
+  [manualTime, manualDuration].forEach((el) => el && el.addEventListener("change", () => {
+    if (manualStatus && manualStatus.value === "Partial") renderSplitHours();
+  }));
 
   manualForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -811,8 +892,10 @@ function bindManualBooking() {
     manualNote.textContent = t("Saving…");
 
     try {
+      let savedGroupId = null;
       if (editingGroupId) {
         // ---- Edit existing booking (explicit courts) ----
+        savedGroupId = editingGroupId;
         await window.MWBC_STORE.updateBooking(editingGroupId, {
           ...details,
           courts: chosenCourts,
@@ -854,7 +937,7 @@ function bindManualBooking() {
         };
         if (weeks === 1) {
           if (!courtsFree(manualDate.value)) { manualNote.textContent = conflictMsg; return; }
-          await window.MWBC_STORE.createManual(payload);
+          savedGroupId = await window.MWBC_STORE.createManual(payload);
         } else {
           // Bulk-create the whole series (fast, even for a permanent one).
           const res = await window.MWBC_STORE.createSeries(payload, weeks);
@@ -872,6 +955,12 @@ function bindManualBooking() {
         const nm = details.name === t("Reserved") ? "" : details.name;
         const key = customerKey({ email: details.email, phone: details.phone, name: nm });
         if (key) { try { await window.MWBC_STORE.setCustomerTag(key, manualType.value, nm); } catch { /* non-critical */ } }
+      }
+
+      // Record which hours are paid on a split booking (cleared otherwise).
+      if (savedGroupId) {
+        const mins = manualStatus.value === "Partial" ? validSplitMinutes() : [];
+        try { await window.MWBC_STORE.setPaidMinutes(savedGroupId, mins); } catch { /* non-critical */ }
       }
 
       manualForm.reset();

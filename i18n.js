@@ -360,6 +360,7 @@
     "Paid": "已付款",
     "Partial": "分开支付",
     "Partially paid (split)": "分开支付（部分已付）",
+    "Tap the hours that have been paid — e.g. a coach's block where students each pay their share. Paid hours show filled-in on the board.": "点击已付款的时段——例如教练包场、学生各付各的。已付时段会在预定表上以深色填充显示。",
     "Unpaid": "未付款",
     "Hold": "暂时保留",
     "Notes": "备注",

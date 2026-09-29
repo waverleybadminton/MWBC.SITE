@@ -60,6 +60,7 @@
           stripeSessionId: r.stripe_session_id || null,
           schoolId: r.school_id || null,
           seriesId: r.series_id || null,
+          paidMinutes: Array.isArray(r.paid_minutes) ? r.paid_minutes.slice() : [],
           createdAt: r.created_at
         };
         map.set(r.group_id, g);
@@ -355,6 +356,15 @@
       if (!data || data.length === 0) throw new Error("nothing_deleted");
       await this._refresh();
       return data.length;
+    },
+
+    // Record which 60-min segments of a booking are paid (split payment).
+    // Pass an empty array to clear it (booking no longer partial).
+    async setPaidMinutes(groupId, minutes) {
+      const value = Array.isArray(minutes) && minutes.length ? [...minutes].sort((a, b) => a - b) : null;
+      const { error } = await sb().from("bookings").update({ paid_minutes: value }).eq("group_id", groupId);
+      if (error) throw error;
+      await this._refresh();
     },
 
     // Create a school booking (many sessions) in one transaction. Staff only.
