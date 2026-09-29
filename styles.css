@@ -1565,6 +1565,7 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .src-online { background: rgba(13, 78, 160, 0.14); color: var(--blue-deep); }
 .src-phone { background: rgba(31, 128, 67, 0.16); color: var(--green-deep); }
 .pill-paid { background: rgba(31, 128, 67, 0.16); color: var(--green-deep); }
+.pill-partial { background: rgba(124, 136, 150, 0.22); color: #3f4b56; }
 .pill-unpaid { background: rgba(242, 177, 52, 0.24); color: #7a5200; }
 .table-actions { display: flex; gap: 0.4rem; white-space: nowrap; }
 .table-action.danger { color: #c23b3b; }

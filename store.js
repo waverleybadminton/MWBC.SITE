@@ -23,7 +23,7 @@
   };
   const courtNum = (c) => Number(String(c).match(/\d+/)?.[0] || 0);
   const courtName = (n) => `Court ${n}`;
-  const STATUS = { paid: "Paid", unpaid: "Unpaid", hold: "Hold", cancelled: "Cancelled" };
+  const STATUS = { paid: "Paid", unpaid: "Unpaid", hold: "Hold", cancelled: "Cancelled", partial: "Partial" };
   const SOURCE = { online: "Online", phone: "Phone", school: "School" };
 
   function uuid() {

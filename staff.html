@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y66">
+    <link rel="stylesheet" href="./styles.css?v=y67">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -108,6 +108,10 @@
           </div>
         </section>
 
+        <section class="exterior-band" aria-label="Mount Waverley Badminton Centre exterior">
+          <img src="./assets/photos/exterior.jpg" alt="Front entrance of Mount Waverley Badminton Centre at 57–59, 170 Forster Rd" loading="lazy">
+        </section>
+
         <section class="centre-section section light" aria-labelledby="centre-title">
           <div class="shell narrow centre-intro">
             <div class="centre-copy">
@@ -134,10 +138,6 @@
               </div>
             </div>
           </div>
-        </section>
-
-        <section class="exterior-band" aria-label="Mount Waverley Badminton Centre exterior">
-          <img src="./assets/photos/exterior.jpg" alt="Front entrance of Mount Waverley Badminton Centre at 57–59, 170 Forster Rd" loading="lazy">
         </section>
 
         <section class="segments-section section light" aria-labelledby="segments-title">
@@ -695,6 +695,7 @@
                   <span><i style="background:#2f7bd8"></i>Coach</span>
                   <span><i style="background:#b8c0c8"></i>Student</span>
                   <span><i style="background:#3f4b56"></i>Paid</span>
+                  <span><i style="background:#7c8896"></i>Partial (split)</span>
                   <span><i style="background:hsl(300,58%,58%)"></i>School (a shade each)</span>
                 </div>
                 <div class="schedule-legend type-legend" aria-label="Dot = who booked">
@@ -766,9 +767,11 @@
                   Status
                   <select id="manual-status">
                     <option value="Paid">Paid</option>
+                    <option value="Partial">Partially paid (split)</option>
                     <option value="Unpaid" selected>Unpaid</option>
                     <option value="Hold">Hold</option>
                   </select>
+                  <small class="field-note" id="split-note" hidden>Some of a shared booking is paid — e.g. a coach's block where students each pay their share. Note who still owes in the notes below.</small>
                 </label>
                 <label>
                   Customer type
@@ -1038,13 +1041,13 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y66"></script>
-    <script src="./mwbc-scheduler.js?v=y66"></script>
-    <script src="./supabase-client.js?v=y66"></script>
-    <script src="./store.js?v=y66"></script>
-    <script src="./main.js?v=y66"></script>
-    <script src="./app.js?v=y66"></script>
-    <script src="./admin.js?v=y66"></script>
+    <script src="./i18n.js?v=y67"></script>
+    <script src="./mwbc-scheduler.js?v=y67"></script>
+    <script src="./supabase-client.js?v=y67"></script>
+    <script src="./store.js?v=y67"></script>
+    <script src="./main.js?v=y67"></script>
+    <script src="./app.js?v=y67"></script>
+    <script src="./admin.js?v=y67"></script>
     <!-- Cloudflare Web Analytics (privacy-friendly, no cookies) -->
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "710b4f76ce4046bf8204d4eea940ec01"}'></script>
     <!-- End Cloudflare Web Analytics -->

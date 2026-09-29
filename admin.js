@@ -21,6 +21,11 @@ let manualSelectedCourts = [];   // court names the staff has ticked for this bo
 const manualTime = document.querySelector("#manual-time");
 const manualDuration = document.querySelector("#manual-duration");
 const manualStatus = document.querySelector("#manual-status");
+const splitNote = document.querySelector("#split-note");
+// Show the split-payment hint only when "Partially paid (split)" is chosen.
+function updateSplitNote() {
+  if (splitNote) splitNote.hidden = !(manualStatus && manualStatus.value === "Partial");
+}
 const manualType = document.querySelector("#manual-type");
 const manualNote = document.querySelector("#manual-note");
 const manualBookingTitle = document.querySelector("#manual-booking-title");
@@ -207,7 +212,7 @@ function sourceDotColor(booking) {
 }
 // Light box colours (ordinary yellow, student grey, some schools) need dark text.
 function blockNeedsDarkText(booking) {
-  if (booking.status === "Paid") return false;      // paid = dark grey → white text
+  if (booking.status === "Paid" || booking.status === "Partial") return false; // dark bg → white text
   if (booking.source === "School") return false;
   const tag = tagFor(booking);
   return tag === "ordinary" || tag === "student";
@@ -272,6 +277,7 @@ function resetModalFields() {
   document.querySelector("#manual-notes").value = "";
   manualSelectedCourts = [];
   manualStatus.value = "Unpaid";
+  updateSplitNote();
   if (manualType) manualType.value = "";
   if (manualRepeat) manualRepeat.value = "1";
   if (manualRepeatField) manualRepeatField.hidden = false;
@@ -300,7 +306,8 @@ function openEditModal(booking) {
   manualTime.value = booking.time;
   manualDuration.value = String(booking.duration);
   renderManualOptions();
-  manualStatus.value = booking.status === "Paid" ? "Paid" : (booking.status === "Hold" ? "Hold" : "Unpaid");
+  manualStatus.value = ["Paid", "Partial", "Hold"].includes(booking.status) ? booking.status : "Unpaid";
+  updateSplitNote();
   if (manualType) manualType.value = tagFor(booking);
   // A one-off booking can be turned into a weekly long-term booking from here.
   // An already-recurring one hides this (extend it from the Long-term panel).
@@ -535,10 +542,12 @@ function renderSchedule() {
       const block = document.createElement("button");
       block.type = "button";
       const isPaid = booking.status === "Paid";
+      const isPartial = booking.status === "Partial";
       const boxColor = bookingBoxColor(booking);
-      block.className = "booking-block" + (isPaid ? " is-paid" : "");
-      block.style.background = isPaid ? "#3f4b56" : boxColor;         // paid = dark grey
-      block.style.setProperty("--type-color", boxColor);              // thin stripe on paid
+      block.className = "booking-block" + (isPaid ? " is-paid" : "") + (isPartial ? " is-partial" : "");
+      // paid = dark grey, partial/split = medium slate, otherwise the type colour
+      block.style.background = isPaid ? "#3f4b56" : (isPartial ? "#7c8896" : boxColor);
+      block.style.setProperty("--type-color", boxColor);              // thin stripe on paid/partial
       block.style.color = blockNeedsDarkText(booking) ? "#16202b" : "#fff";
       block.style.gridColumn = `${courtIndex + 2}`;
       block.style.gridRow = `${startIndex + 2} / span ${slots}`;
@@ -669,7 +678,7 @@ function renderBookings() {
     const row = document.createElement("tr");
     const sourceClass = booking.source === "School" ? "src-school"
       : (booking.source === "Phone" || booking.source === "Manual" ? "src-phone" : "src-online");
-    const paidClass = booking.status === "Paid" ? "pill-paid" : "pill-unpaid";
+    const paidClass = booking.status === "Paid" ? "pill-paid" : (booking.status === "Partial" ? "pill-partial" : "pill-unpaid");
     row.innerHTML = `
       <td class="col-date">${displayDate(booking.date, { short: true })}</td>
       <td>${escapeHtml(booking.name)}</td>
@@ -770,6 +779,7 @@ function allocateManualCourts(date, time, duration, firstCourt, count, excludeId
 function bindManualBooking() {
   // Re-grey the courts grid when the time/date/duration changes.
   [manualDate, manualTime, manualDuration].forEach((el) => el && el.addEventListener("change", renderCourtsGrid));
+  if (manualStatus) manualStatus.addEventListener("change", updateSplitNote);
 
   manualForm.addEventListener("submit", async (event) => {
     event.preventDefault();

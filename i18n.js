@@ -358,6 +358,8 @@
     "For bookings longer than 5 hours, use enquiry/group booking.": "如需预订超过 5 小时，请使用团体咨询。",
     "Status": "状态",
     "Paid": "已付款",
+    "Partial": "分开支付",
+    "Partially paid (split)": "分开支付（部分已付）",
     "Unpaid": "未付款",
     "Hold": "暂时保留",
     "Notes": "备注",
