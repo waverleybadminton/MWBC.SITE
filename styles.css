@@ -242,7 +242,7 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
 .shell { max-width: 1200px; margin: 0 auto; }
 .shell.narrow { max-width: 820px; }
 
-.section { padding: clamp(3.5rem, 9vw, 6.5rem) clamp(1.25rem, 4.5vw, 3rem); }
+.section { padding: clamp(2.25rem, 5.5vw, 3.75rem) clamp(1.25rem, 4.5vw, 3rem); }
 
 .section.light { background: var(--paper); color: var(--ink); }
 .section.light.alt { background: #e8f3eb; }
@@ -255,7 +255,7 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
 .cta-band h2 { margin-bottom: 0.8rem; }
 .cta-band p { max-width: 42rem; margin-left: auto; margin-right: auto; margin-bottom: 1.6rem; }
 
-.section-head { max-width: 640px; margin-bottom: clamp(1.75rem, 4vw, 3rem); }
+.section-head { max-width: 640px; margin-bottom: clamp(1.1rem, 2.5vw, 1.75rem); }
 .section-head h2 { margin-bottom: 0; }
 
 /* ---------- reveal ---------- */
