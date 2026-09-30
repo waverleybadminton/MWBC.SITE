@@ -199,10 +199,11 @@ function selectedDateBookings() {
     .sort((a, b) => minutesFromTime(a.time) - minutesFromTime(b.time) || (bookingCourts(a)[0] || "").localeCompare(bookingCourts(b)[0] || ""));
 }
 
+const SLOT_MIN = 15; // board grid resolution — 15 min so :15/:45 bookings land on the grid
 function getScheduleTimes() {
   const times = [];
   const openHour = openingHour(adminDate.value);
-  for (let minutes = openHour * 60; minutes < closeHour * 60; minutes += 30) {
+  for (let minutes = openHour * 60; minutes < closeHour * 60; minutes += SLOT_MIN) {
     times.push(timeFromMinutes(minutes));
   }
   return times;
@@ -310,7 +311,7 @@ function isCourtOccupied(bookings, court, time) {
   const start = minutesFromTime(time);
   return bookings.some((booking) => {
     if (!bookingCourts(booking).includes(court)) return false;
-    return overlaps(start, 30, minutesFromTime(booking.time), booking.duration);
+    return overlaps(start, SLOT_MIN, minutesFromTime(booking.time), booking.duration);
   });
 }
 
@@ -559,11 +560,14 @@ function renderSchedule() {
 
   times.forEach((time, timeIndex) => {
     const slotStart = minutesFromTime(time);
-    const isNow = nowMinutes >= slotStart && nowMinutes < slotStart + 30;
+    const isNow = nowMinutes >= slotStart && nowMinutes < slotStart + SLOT_MIN;
+    const onHour = time.endsWith(":00");
+    const onHalf = time.endsWith(":30");
 
     const label = document.createElement("div");
-    label.className = "time-label" + (time.endsWith(":00") ? " hour" : "") + (isNow ? " is-now" : "");
-    label.textContent = displayTime(time);
+    label.className = "time-label" + (onHour ? " hour" : "") + (onHalf ? " half" : "") + (isNow ? " is-now" : "");
+    // Only label the hour and half-hour rows so the 15-min grid stays readable.
+    label.textContent = (onHour || onHalf) ? displayTime(time) : "";
     label.style.gridColumn = "1";
     label.style.gridRow = `${timeIndex + 2}`;
     schedule.append(label);
@@ -572,7 +576,7 @@ function renderSchedule() {
       const cell = document.createElement("button");
       const occupied = isCourtOccupied(bookings, court, time);
       cell.type = "button";
-      cell.className = "schedule-cell" + (time.endsWith(":00") ? " hour-line" : "") + (isNow ? " is-now" : "");
+      cell.className = "schedule-cell" + (onHour ? " hour-line" : "") + (onHalf ? " half-line" : "") + (isNow ? " is-now" : "");
       cell.dataset.court = court;
       cell.dataset.time = time;
       cell.style.gridColumn = `${courtIndex + 2}`;
@@ -603,7 +607,7 @@ function renderSchedule() {
   bookings.forEach((booking) => {
     const startIndex = times.indexOf(booking.time);
     if (startIndex < 0) return;
-    const slots = Math.max(1, Number(booking.duration) / 30);
+    const slots = Math.max(1, Math.round(Number(booking.duration) / SLOT_MIN));
     bookingCourts(booking).forEach((court) => {
       const courtIndex = courts.indexOf(court);
       if (courtIndex < 0) return;
