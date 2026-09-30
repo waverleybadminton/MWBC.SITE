@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y69">
+    <link rel="stylesheet" href="./styles.css?v=y70">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -195,24 +195,38 @@
       <!-- ================= COURT HIRE ================= -->
       <section class="tab-panel" id="court-hire" data-tab-panel="court-hire">
         <section class="page-head" aria-labelledby="court-hire-title">
-          <div class="shell">
-            <p class="kicker">Court hire</p>
-            <h1 class="display" id="court-hire-title">Book a court</h1>
-            <p class="page-sub">Live availability. Instant confirmation. From $22 an hour.</p>
-            <div class="rate-strip" aria-label="Court hire rates">
-              <div class="rate-item">
-                <strong>$22/hr</strong>
-                <span>Off-peak hours · weekdays before 5pm</span>
-              </div>
-              <div class="rate-item">
-                <strong>$32/hr</strong>
-                <span>Peak · evenings, weekends &amp; public holidays</span>
-              </div>
-              <div class="rate-item">
-                <strong>Open daily</strong>
-                <span>Weekdays 9am-11pm · weekends 8am-11pm</span>
+          <div class="shell court-head-grid">
+            <div class="court-head-main">
+              <p class="kicker">Court hire</p>
+              <h1 class="display court-head-title" id="court-hire-title">Book a court</h1>
+              <p class="page-sub">Live availability. Instant confirmation. From $22 an hour.</p>
+              <div class="rate-strip" aria-label="Court hire rates">
+                <div class="rate-item">
+                  <strong>$22/hr</strong>
+                  <span>Off-peak hours · weekdays before 5pm</span>
+                </div>
+                <div class="rate-item">
+                  <strong>$32/hr</strong>
+                  <span>Peak · evenings, weekends &amp; public holidays</span>
+                </div>
+                <div class="rate-item">
+                  <strong>Open daily</strong>
+                  <span>Weekdays 9am-11pm · weekends 8am-11pm</span>
+                </div>
               </div>
             </div>
+            <aside class="court-head-contact" aria-label="Contact and location">
+              <dl class="info-list">
+                <div>
+                  <dt>Phone</dt>
+                  <dd><a href="tel:+61452242399">0452 242 399</a></dd>
+                </div>
+                <div>
+                  <dt>Address</dt>
+                  <dd>Unit 57, 170 Forster Rd, Mount Waverley VIC 3149</dd>
+                </div>
+              </dl>
+            </aside>
           </div>
         </section>
 
@@ -236,10 +250,10 @@
                   <label>
                     Duration
                     <select id="booking-duration" name="duration">
-                      <option value="60" selected>60 minutes</option>
-                      <option value="90">90 minutes</option>
-                      <option value="120">120 minutes</option>
-                      <option value="150">150 minutes</option>
+                      <option value="60" selected>1 hour</option>
+                      <option value="90">1.5 hours</option>
+                      <option value="120">2 hours</option>
+                      <option value="150">2.5 hours</option>
                       <option value="180">3 hours</option>
                       <option value="210">3.5 hours</option>
                       <option value="240">4 hours</option>
@@ -698,10 +712,9 @@
                   <span><i style="background:#7c8896"></i>Partial (split)</span>
                   <span><i style="background:hsl(300,58%,58%)"></i>School (a shade each)</span>
                 </div>
-                <div class="schedule-legend type-legend" aria-label="Dot = who booked">
-                  <span class="type-legend-label">Dot:</span>
-                  <span><i style="background:#ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.35)"></i>Online</span>
-                  <span><i style="background:#12263a"></i>Booked by us</span>
+                <div class="schedule-legend type-legend" aria-label="Booking source">
+                  <span class="type-legend-label">Source:</span>
+                  <span><span class="legend-online">Online</span>= booked on the website · no tag = booked by us</span>
                 </div>
               </div>
             </div>
@@ -751,10 +764,10 @@
                 <label>
                   Duration
                   <select id="manual-duration">
-                    <option value="60" selected>60 minutes</option>
-                    <option value="90">90 minutes</option>
-                    <option value="120">120 minutes</option>
-                    <option value="150">150 minutes</option>
+                    <option value="60" selected>1 hour</option>
+                    <option value="90">1.5 hours</option>
+                    <option value="120">2 hours</option>
+                    <option value="150">2.5 hours</option>
                     <option value="180">3 hours</option>
                     <option value="210">3.5 hours</option>
                     <option value="240">4 hours</option>
@@ -1042,13 +1055,13 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y69"></script>
-    <script src="./mwbc-scheduler.js?v=y69"></script>
-    <script src="./supabase-client.js?v=y69"></script>
-    <script src="./store.js?v=y69"></script>
-    <script src="./main.js?v=y69"></script>
-    <script src="./app.js?v=y69"></script>
-    <script src="./admin.js?v=y69"></script>
+    <script src="./i18n.js?v=y70"></script>
+    <script src="./mwbc-scheduler.js?v=y70"></script>
+    <script src="./supabase-client.js?v=y70"></script>
+    <script src="./store.js?v=y70"></script>
+    <script src="./main.js?v=y70"></script>
+    <script src="./app.js?v=y70"></script>
+    <script src="./admin.js?v=y70"></script>
     <!-- Cloudflare Web Analytics (privacy-friendly, no cookies) -->
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "710b4f76ce4046bf8204d4eea940ec01"}'></script>
     <!-- End Cloudflare Web Analytics -->

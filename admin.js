@@ -199,7 +199,7 @@ function selectedDateBookings() {
     .sort((a, b) => minutesFromTime(a.time) - minutesFromTime(b.time) || (bookingCourts(a)[0] || "").localeCompare(bookingCourts(b)[0] || ""));
 }
 
-const SLOT_MIN = 15; // board grid resolution — 15 min so :15/:45 bookings land on the grid
+const SLOT_MIN = 30; // board grid resolution (30-min rows); off-grid bookings are pixel-offset
 function getScheduleTimes() {
   const times = [];
   const openHour = openingHour(adminDate.value);
@@ -296,13 +296,13 @@ function bookingClass(booking) {
 
 function bookingBlockHTML(booking, court) {
   const courtBadge = court ? `<span class="bb-court">#${escapeHtml(String(courtNumber(court)))}</span>` : "";
-  const srcColor = sourceDotColor(booking);
-  const dot = srcColor ? `<span class="bb-src-dot" style="background:${srcColor}"></span>` : "";
+  // Only flag website bookings; staff-entered ones are the norm and stay unmarked.
+  const onlineTag = booking.source === "Online" ? `<span class="bb-online">${t("Online")}</span>` : "";
   if (booking.source === "School") {
-    return dot + courtBadge + `<span class="bb-name">${escapeHtml(booking.name)}</span><span class="bb-tag">${t("School")}</span>`;
+    return courtBadge + `<span class="bb-name">${escapeHtml(booking.name)}</span><span class="bb-tag">${t("School")}</span>`;
   }
   const phone = booking.phone || booking.email || "";
-  return dot + courtBadge
+  return onlineTag + courtBadge
     + `<span class="bb-name">${escapeHtml(booking.name)}</span>`
     + (phone ? `<span class="bb-phone">${escapeHtml(phone)}</span>` : "");
 }
@@ -315,11 +315,11 @@ function isCourtOccupied(bookings, court, time) {
   });
 }
 
+// Durations are shown in hours everywhere, for consistency (e.g. 90 min → 1.5h).
 function formatDuration(minutes) {
-  if (minutes < 60) return isChinese() ? `${minutes} 分钟` : `${minutes} minutes`;
   const hours = minutes / 60;
-  if (isChinese()) return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} 小时`;
-  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} ${hours === 1 ? "hour" : "hours"}`;
+  const val = Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
+  return isChinese() ? `${val} 小时` : `${val} ${hours === 1 ? "hour" : "hours"}`;
 }
 
 /* ---------- booking modal ---------- */
@@ -561,13 +561,10 @@ function renderSchedule() {
   times.forEach((time, timeIndex) => {
     const slotStart = minutesFromTime(time);
     const isNow = nowMinutes >= slotStart && nowMinutes < slotStart + SLOT_MIN;
-    const onHour = time.endsWith(":00");
-    const onHalf = time.endsWith(":30");
 
     const label = document.createElement("div");
-    label.className = "time-label" + (onHour ? " hour" : "") + (onHalf ? " half" : "") + (isNow ? " is-now" : "");
-    // Only label the hour and half-hour rows so the 15-min grid stays readable.
-    label.textContent = (onHour || onHalf) ? displayTime(time) : "";
+    label.className = "time-label" + (time.endsWith(":00") ? " hour" : "") + (isNow ? " is-now" : "");
+    label.textContent = displayTime(time);
     label.style.gridColumn = "1";
     label.style.gridRow = `${timeIndex + 2}`;
     schedule.append(label);
@@ -576,7 +573,7 @@ function renderSchedule() {
       const cell = document.createElement("button");
       const occupied = isCourtOccupied(bookings, court, time);
       cell.type = "button";
-      cell.className = "schedule-cell" + (onHour ? " hour-line" : "") + (onHalf ? " half-line" : "") + (isNow ? " is-now" : "");
+      cell.className = "schedule-cell" + (time.endsWith(":00") ? " hour-line" : "") + (isNow ? " is-now" : "");
       cell.dataset.court = court;
       cell.dataset.time = time;
       cell.style.gridColumn = `${courtIndex + 2}`;
@@ -604,9 +601,14 @@ function renderSchedule() {
     });
   });
 
+  const openMin = openingHour(adminDate.value) * 60;
   bookings.forEach((booking) => {
-    const startIndex = times.indexOf(booking.time);
-    if (startIndex < 0) return;
+    // Anchor to the 30-min row the booking starts in, then pixel-nudge down for
+    // any :15/:45 offset — keeps a clean 30-min grid but shows off-grid starts.
+    const startMinB = minutesFromTime(booking.time);
+    const floorIndex = Math.floor((startMinB - openMin) / SLOT_MIN);
+    if (floorIndex < 0 || floorIndex >= times.length) return;
+    const offsetMin = (startMinB - openMin) - floorIndex * SLOT_MIN;
     const slots = Math.max(1, Math.round(Number(booking.duration) / SLOT_MIN));
     bookingCourts(booking).forEach((court) => {
       const courtIndex = courts.indexOf(court);
@@ -625,10 +627,11 @@ function renderSchedule() {
       block.style.setProperty("--type-color", boxColor);              // thin stripe on paid/partial
       block.style.color = blockNeedsDarkText(booking) ? "#16202b" : "#fff";
       block.style.gridColumn = `${courtIndex + 2}`;
-      block.style.gridRow = `${startIndex + 2} / span ${slots}`;
+      block.style.gridRow = `${floorIndex + 2} / span ${slots}`;
+      if (offsetMin > 0) block.style.transform = `translateY(calc(var(--row-h, 34px) * ${(offsetMin / SLOT_MIN).toFixed(3)}))`;
       block.title = isChinese()
-        ? `${displayCourt(court)}，${displayTime(booking.time)}，${booking.duration} 分钟 — 点击编辑`
-        : `${court}, ${displayTime(booking.time)}, ${booking.duration} min — click to edit`;
+        ? `${displayCourt(court)}，${displayTime(booking.time)}，${formatDuration(booking.duration)} — 点击编辑`
+        : `${court}, ${displayTime(booking.time)}, ${formatDuration(booking.duration)} — click to edit`;
       block.setAttribute("aria-label", isChinese()
         ? `编辑预订：${booking.name}，${displayCourt(court)}，${displayTime(booking.time)}`
         : `Edit booking: ${booking.name}, ${court} at ${displayTime(booking.time)}`);
@@ -765,7 +768,7 @@ function renderBookings() {
       <td class="col-date">${displayDate(booking.date, { short: true })}</td>
       <td>${escapeHtml(booking.name)}</td>
       <td>${escapeHtml(booking.phone || booking.email || "")}</td>
-      <td>${isChinese() ? `${displayTime(booking.time)}，${booking.duration} 分钟` : `${displayTime(booking.time)} for ${booking.duration} min`}</td>
+      <td>${isChinese() ? `${displayTime(booking.time)}，${formatDuration(booking.duration)}` : `${displayTime(booking.time)} for ${formatDuration(booking.duration)}`}</td>
       <td>${bookingCourts(booking).map(displayCourt).join(isChinese() ? "、" : ", ")}</td>
       <td><span class="src-pill ${sourceClass}">${t(booking.source || "Online")}</span></td>
       <td>$${booking.price || 0}</td>

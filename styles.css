@@ -777,6 +777,16 @@ html[data-language="zh"] .segment-card h3 { text-transform: none; font-stretch: 
 
 .page-head.has-photo .shell { position: relative; }
 
+/* Court-hire header: content left, contact card right; smaller heading. */
+.court-head-grid { display: grid; gap: 1.4rem 3rem; grid-template-columns: 1fr; align-items: start; }
+h1.court-head-title { font-size: clamp(1.85rem, 4vw, 2.7rem); margin-bottom: 0.4rem; }
+.court-head-contact .info-list { margin: 0; gap: 0.6rem; }
+@media (min-width: 900px) {
+  .court-head-grid { grid-template-columns: 1.6fr 1fr; }
+  .court-head-contact { justify-self: end; text-align: right; max-width: 320px; }
+  .court-head-contact .hours-list span { justify-content: flex-end; }
+}
+
 .rate-strip { display: flex; flex-wrap: wrap; gap: 0.35rem 1.4rem; margin-top: 1rem; }
 
 .rate-item {
@@ -1464,7 +1474,7 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
   /* Fixed, wider court columns so the full name + phone show without clicking;
      the board scrolls horizontally when they don't all fit. */
   grid-template-columns: 60px repeat(var(--court-count, 14), var(--court-w, 118px));
-  grid-auto-rows: var(--row-h, 17px); /* 15-min rows */
+  grid-auto-rows: var(--row-h, 34px);
   gap: 2px;
   width: max-content;
   min-width: 100%;
@@ -1495,9 +1505,7 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
   background: var(--paper); color: var(--navy-900);
   font-size: 0.82rem; font-weight: 600;
 }
-.time-label { align-items: flex-start; padding-top: 1px; }
 .time-label.hour { font-weight: 800; color: var(--ink); }
-.time-label.half { font-weight: 600; color: var(--ink-soft); font-size: 0.72rem; }
 
 .schedule-cell {
   border: 0;
@@ -1507,7 +1515,6 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
   transition: background-color 100ms ease;
 }
 .schedule-cell.hour-line { box-shadow: inset 0 2px 0 -1px var(--line); }
-.schedule-cell.half-line { box-shadow: inset 0 1px 0 -1px rgba(12, 28, 48, 0.09); }
 .schedule-cell:hover:not([disabled]) { background: rgba(13, 78, 160, 0.16); }
 .schedule-cell[disabled] { cursor: default; background: #fff; }
 .schedule-cell.drop-hover { background: rgba(31, 157, 85, 0.32); box-shadow: inset 0 0 0 2px #1f9d55; }
@@ -1538,8 +1545,24 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .bb-phone { font-size: 0.68rem; opacity: 0.95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bb-court { position: absolute; top: 1px; right: 4px; font-size: 0.56rem; font-weight: 800; opacity: 0.72; letter-spacing: 0.02em; }
 /* "Who booked" dot (top-left): white = online, navy = booked by us. */
-.bb-src-dot { position: absolute; top: 2px; left: 3px; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.4); }
-.booking-block:has(.bb-src-dot) .bb-name, .booking-block:has(.bb-src-dot) .bb-phone { padding-left: 12px; }
+/* "Online" tag (top-left) marks website bookings; staff-entered ones are unmarked. */
+.bb-online {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #0d4ea0;
+  color: #fff;
+  line-height: 1.35;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+/* Push content below the tag so it never overlaps the name on short blocks. */
+.booking-block:has(.bb-online) { justify-content: flex-start; padding-top: 19px; }
 /* Paid = dark-grey box (set inline) + a thin type-coloured left stripe. */
 .booking-block.is-paid { box-shadow: inset 4px 0 0 var(--type-color, rgba(255,255,255,0.35)); }
 .booking-block.is-paid:hover { box-shadow: inset 4px 0 0 var(--type-color, rgba(255,255,255,0.35)), inset 0 0 0 2px rgba(255, 255, 255, 0.6); }
@@ -1578,6 +1601,18 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .split-hour:hover { border-color: var(--ink-soft); }
 .split-hour.is-paid { background: #3f4b56; border-color: #3f4b56; color: #fff; }
 .type-legend .type-legend-label { font-weight: 700; }
+.legend-online {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #0d4ea0;
+  color: #fff;
+  margin-right: 4px;
+}
 .type-legend i { border-radius: 50%; }
 .type-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; box-shadow: 0 0 0 1px rgba(0,0,0,0.12); }
 .cust-type { padding: 0.25rem 0.4rem; border: 1px solid #cfd6dd; border-radius: 7px; font-size: 0.8rem; }
