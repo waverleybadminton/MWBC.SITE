@@ -216,6 +216,14 @@ function maxBookingDate() {
   return new Date(d.getTime() - offset).toISOString().slice(0, 10);
 }
 
+// Soft-launch floor: the first bookable date. Once this date passes, it has no
+// effect (max(today, OPEN_DATE) just becomes today).
+const OPEN_FROM = "2026-10-05";
+function earliestBookingDate() {
+  const t = isoToday();
+  return t > OPEN_FROM ? t : OPEN_FROM;
+}
+
 function isSlotAvailable(dateValue, time, duration, courtCount = selectedCourtCount()) {
   return fitsOpeningHours(dateValue, time, duration)
     && !isPastSlot(dateValue, time)
@@ -223,8 +231,7 @@ function isSlotAvailable(dateValue, time, duration, courtCount = selectedCourtCo
 }
 
 function dayStatus(dateValue) {
-  const today = isoToday();
-  if (dateValue < today || dateValue > maxBookingDate()) return "closed";
+  if (dateValue < earliestBookingDate() || dateValue > maxBookingDate()) return "closed";
   const duration = durationInput.value;
   const needed = selectedCourtCount();
   const anyAvailable = generateSlots(dateValue).some((slot) => {
@@ -517,10 +524,9 @@ function bindBookingForm() {
   });
 }
 
-dateInput.min = isoToday();
+dateInput.min = earliestBookingDate();
 dateInput.max = maxBookingDate();
-dateInput.max = maxBookingDate();
-dateInput.value = isoToday();
+dateInput.value = earliestBookingDate();
 syncVisibleMonthToDate();
 
 document.querySelector("#calendar-prev").addEventListener("click", () => {
