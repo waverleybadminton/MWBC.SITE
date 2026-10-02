@@ -360,6 +360,7 @@
     "Paid": "已付款",
     "Partial": "分开支付",
     "Partially paid (split)": "分开支付（部分已付）",
+    "Different time / duration per court": "每个场地不同时间 / 时长",
     "This is a recurring booking — apply changes to:": "这是长期（重复）预订——将更改应用于：",
     "This booking only": "仅此次预订",
     "This & all future": "此次及以后全部",

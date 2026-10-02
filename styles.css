@@ -1692,6 +1692,13 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .court-pick:hover:not(:disabled) { border-color: var(--blue); }
 .court-pick.selected { background: var(--blue); color: #fff; border-color: var(--blue); }
 .court-pick.busy { background: #eef1f4; color: #aab3bd; cursor: not-allowed; }
+/* Per-court time/duration (multi-court bookings with different lengths). */
+.per-court-check { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.per-court-check input { accent-color: var(--blue); }
+.per-court-list { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; }
+.per-court-row { display: grid; grid-template-columns: 72px 1fr 1fr; gap: 0.4rem; align-items: center; }
+.per-court-row .pc-court { font-weight: 700; font-size: 0.85rem; }
+.per-court-row select { padding: 0.4rem 0.5rem; border: 1px solid #cfd6dd; border-radius: 8px; background: #fff; font: inherit; font-size: 0.85rem; }
 
 /* ---------- Long-term bookings panel ---------- */
 .series-ending { background: #fff5e6; }

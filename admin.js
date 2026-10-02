@@ -18,6 +18,10 @@ const manualForm = document.querySelector("#manual-booking-form");
 const manualDate = document.querySelector("#manual-date");
 const manualCourtsGrid = document.querySelector("#manual-courts-grid");
 let manualSelectedCourts = [];   // court names the staff has ticked for this booking
+const perCourtCheck = document.querySelector("#per-court-check");
+const perCourtToggle = document.querySelector("#per-court-toggle");
+const perCourtList = document.querySelector("#per-court-list");
+let perCourtTimes = {};          // court name -> { time, duration } overrides (only explicitly-changed courts)
 const manualTime = document.querySelector("#manual-time");
 const manualDuration = document.querySelector("#manual-duration");
 const manualStatus = document.querySelector("#manual-status");
@@ -351,6 +355,8 @@ function resetModalFields() {
   document.querySelector("#manual-email").value = "";
   document.querySelector("#manual-notes").value = "";
   manualSelectedCourts = [];
+  perCourtTimes = {};
+  if (perCourtToggle) perCourtToggle.checked = false;
   manualStatus.value = "Unpaid";
   splitPaidMinutes = [];
   updateSplitNote();
@@ -851,6 +857,42 @@ function renderCourtsGrid() {
     });
     manualCourtsGrid.append(btn);
   });
+  renderPerCourtTimes();
+}
+
+// When 2+ courts are picked (new bookings), optionally give each court its own
+// start time + duration — e.g. two courts, one for 2h and one for 1.5h.
+function renderPerCourtTimes() {
+  if (!perCourtCheck || !perCourtList || !perCourtToggle) return;
+  const multi = !editingGroupId && manualSelectedCourts.length >= 2;
+  perCourtCheck.hidden = !multi;
+  if (!multi) perCourtToggle.checked = false;
+  const on = multi && perCourtToggle.checked;
+  perCourtList.hidden = !on;
+  if (!on) { perCourtList.innerHTML = ""; return; }
+
+  const times = getScheduleTimes();
+  const durs = [60, 90, 120, 150, 180, 210, 240, 270, 300];
+  const timeOpts = (sel) => times.map((tm) => `<option value="${tm}"${tm === sel ? " selected" : ""}>${displayTime(tm)}</option>`).join("");
+  const durOpts = (sel) => durs.map((d) => `<option value="${d}"${d === sel ? " selected" : ""}>${formatDuration(d)}</option>`).join("");
+
+  perCourtList.innerHTML = manualSelectedCourts.slice().sort((a, b) => courtNumber(a) - courtNumber(b)).map((court) => {
+    const pc = perCourtTimes[court] || { time: manualTime.value, duration: Number(manualDuration.value) };
+    return `<div class="per-court-row" data-court="${court}">
+      <span class="pc-court">${displayCourt(court)}</span>
+      <select class="pc-time" aria-label="Start">${timeOpts(pc.time)}</select>
+      <select class="pc-dur" aria-label="Duration">${durOpts(Number(pc.duration))}</select>
+    </div>`;
+  }).join("");
+
+  perCourtList.querySelectorAll(".per-court-row").forEach((row) => {
+    const court = row.dataset.court;
+    const tSel = row.querySelector(".pc-time");
+    const dSel = row.querySelector(".pc-dur");
+    const save = () => { perCourtTimes[court] = { time: tSel.value, duration: Number(dSel.value) }; };
+    tSel.addEventListener("change", save);
+    dSel.addEventListener("change", save);
+  });
 }
 
 function hasConflict(candidate) {
@@ -879,6 +921,7 @@ function allocateManualCourts(date, time, duration, firstCourt, count, excludeId
 function bindManualBooking() {
   // Re-grey the courts grid when the time/date/duration changes.
   [manualDate, manualTime, manualDuration].forEach((el) => el && el.addEventListener("change", renderCourtsGrid));
+  if (perCourtToggle) perCourtToggle.addEventListener("change", renderPerCourtTimes);
   if (manualStatus) manualStatus.addEventListener("change", updateSplitNote);
   [manualTime, manualDuration].forEach((el) => el && el.addEventListener("change", () => {
     if (manualStatus && manualStatus.value === "Partial") renderSplitHours();
@@ -961,25 +1004,56 @@ function bindManualBooking() {
       } else {
         // ---- Create with the exact courts chosen (optionally repeating weekly) ----
         const weeks = Math.max(1, Number(manualRepeat && manualRepeat.value) || 1);
-        const payload = {
-          ...details,
-          courts: chosenCourts,
-          date: manualDate.value,
-          time,
-          duration,
-          pricePerCourtCents: Math.round(computePrice(manualDate.value, time, duration) * 100)
-        };
-        if (weeks === 1) {
-          if (!courtsFree(manualDate.value)) { manualNote.textContent = conflictMsg; return; }
-          savedGroupId = await window.MWBC_STORE.createManual(payload);
-        } else {
-          // Bulk-create the whole series (fast, even for a permanent one).
-          const res = await window.MWBC_STORE.createSeries(payload, weeks);
-          if (!res || res.made === 0) { manualNote.textContent = conflictMsg; return; }
-          if (res.skipped > 0) {
+        const perCourt = perCourtToggle && perCourtToggle.checked && chosenCourts.length >= 2;
+        if (perCourt) {
+          // Group the chosen courts by their own time + duration (e.g. one court
+          // 2h, another 1.5h). Each distinct time/duration becomes its own booking.
+          const groups = new Map();
+          for (const court of chosenCourts) {
+            const pc = perCourtTimes[court] || { time, duration: Number(duration) };
+            const key = pc.time + "|" + pc.duration;
+            if (!groups.has(key)) groups.set(key, { time: pc.time, duration: Number(pc.duration), courts: [] });
+            groups.get(key).courts.push(court);
+          }
+          // Each court must be free for its own time/duration before we create any.
+          for (const g of groups.values()) {
+            const free = g.courts.every((court) => !readBookings().some((b) =>
+              b.date === manualDate.value && bookingCourts(b).includes(court)
+              && overlaps(minutesFromTime(g.time), g.duration, minutesFromTime(b.time), b.duration)));
+            if (!free) { manualNote.textContent = conflictMsg; return; }
+          }
+          let madeW = 0, skippedW = 0;
+          for (const g of groups.values()) {
+            const gp = { ...details, courts: g.courts, date: manualDate.value, time: g.time, duration: g.duration,
+              pricePerCourtCents: Math.round(computePrice(manualDate.value, g.time, g.duration) * 100) };
+            if (weeks === 1) { await window.MWBC_STORE.createManual(gp); }
+            else { const r = await window.MWBC_STORE.createSeries(gp, weeks); madeW += r.made; skippedW += r.skipped; }
+          }
+          if (weeks > 1 && skippedW > 0) {
             window.alert(isChinese()
-              ? `已预订 ${res.made} 周，${res.skipped} 周因冲突跳过。`
-              : `Booked ${res.made} week(s); ${res.skipped} skipped due to conflicts.`);
+              ? `已预订 ${madeW} 次，${skippedW} 次因冲突跳过。`
+              : `Booked ${madeW}; ${skippedW} skipped due to conflicts.`);
+          }
+        } else {
+          const payload = {
+            ...details,
+            courts: chosenCourts,
+            date: manualDate.value,
+            time,
+            duration,
+            pricePerCourtCents: Math.round(computePrice(manualDate.value, time, duration) * 100)
+          };
+          if (weeks === 1) {
+            if (!courtsFree(manualDate.value)) { manualNote.textContent = conflictMsg; return; }
+            savedGroupId = await window.MWBC_STORE.createManual(payload);
+          } else {
+            const res = await window.MWBC_STORE.createSeries(payload, weeks);
+            if (!res || res.made === 0) { manualNote.textContent = conflictMsg; return; }
+            if (res.skipped > 0) {
+              window.alert(isChinese()
+                ? `已预订 ${res.made} 周，${res.skipped} 周因冲突跳过。`
+                : `Booked ${res.made} week(s); ${res.skipped} skipped due to conflicts.`);
+            }
           }
         }
       }
