@@ -1045,6 +1045,16 @@ html[data-language="zh"] .booking-step legend { text-transform: none; font-stret
 }
 
 .payment-reassurance { font-size: 0.88rem; color: var(--ink-soft); }
+.shoes-note {
+  margin: 0.55rem 0 0;
+  padding: 8px 12px;
+  background: rgba(31, 128, 67, 0.08);
+  border-left: 3px solid var(--green);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--green-deep);
+}
 
 .booking-policy-info {
   border: 1px solid rgba(31, 128, 67, 0.4);
