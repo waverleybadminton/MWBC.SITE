@@ -338,6 +338,23 @@
       await this._refresh();
     },
 
+    // Keep an edited occurrence attached to its series (replace_booking, used by
+    // updateBooking, doesn't carry series_id across its delete+reinsert).
+    async setSeriesId(groupId, seriesId) {
+      const { error } = await sb().from("bookings").update({ series_id: seriesId }).eq("group_id", groupId);
+      if (error) throw error;
+      await this._refresh();
+    },
+
+    // Google-Calendar "this and all following": replace the series' occurrences
+    // from `fromDate` onward with `weeks` fresh ones carrying the new details
+    // (same series_id; clashing weeks are skipped).
+    async updateSeriesFromDate(seriesId, fromDate, b, weeks) {
+      const { error } = await sb().from("bookings").delete().eq("series_id", seriesId).gte("booking_date", fromDate);
+      if (error) throw error;
+      return await this.createSeries(b, weeks, seriesId);
+    },
+
     // Delete every occurrence of a long-term series (all weeks).
     // Returns the deleted row rows and throws if the delete removed nothing
     // (e.g. an expired session or RLS mismatch silently deleting 0 rows) so a

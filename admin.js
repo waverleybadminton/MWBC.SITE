@@ -98,6 +98,12 @@ let editingGroupId = null;
 let editingSource = "phone";
 let editingSessionId = "";
 let editingSeriesId = null;
+let editingOrigDate = null; // the occurrence's date before editing (for series scope)
+const seriesScopeField = document.querySelector("#series-scope-field");
+const seriesScopeValue = () => {
+  const el = document.querySelector('input[name="series-scope"]:checked');
+  return el ? el.value : "this";
+};
 
 function courtNumber(court) {
   return Number(String(court).match(/\d+/)?.[0] || 0);
@@ -338,6 +344,8 @@ function closeManualModal() {
 function resetModalFields() {
   editingGroupId = null;
   editingSeriesId = null;
+  editingOrigDate = null;
+  if (seriesScopeField) seriesScopeField.hidden = true;
   document.querySelector("#manual-name").value = "";
   document.querySelector("#manual-phone").value = "";
   document.querySelector("#manual-email").value = "";
@@ -363,6 +371,7 @@ function openEditModal(booking) {
   resetModalFields();
   editingGroupId = booking.id;
   editingSeriesId = booking.seriesId || null;
+  editingOrigDate = booking.date;
   editingSource = booking.source === "Online" ? "online" : "phone";
   editingSessionId = booking.stripeSessionId || "";
   document.querySelector("#manual-name").value = booking.name === t("Reserved") ? "" : booking.name;
@@ -382,6 +391,12 @@ function openEditModal(booking) {
   // An already-recurring one hides this (extend it from the Long-term panel).
   if (manualRepeat) manualRepeat.value = "1";
   if (manualRepeatField) manualRepeatField.hidden = !!editingSeriesId;
+  // Recurring booking → offer "this only" vs "this & all future" (Google-Cal style).
+  if (seriesScopeField) {
+    seriesScopeField.hidden = !editingSeriesId;
+    const thisOpt = seriesScopeField.querySelector('input[value="this"]');
+    if (thisOpt) thisOpt.checked = true;
+  }
   if (manualDelete) manualDelete.hidden = false;
   if (manualSubmit) manualSubmit.textContent = t("Update Booking");
   manualBookingTitle.textContent = t("Edit booking");
@@ -901,34 +916,46 @@ function bindManualBooking() {
     try {
       let savedGroupId = null;
       if (editingGroupId) {
-        // ---- Edit existing booking (explicit courts) ----
-        savedGroupId = editingGroupId;
-        await window.MWBC_STORE.updateBooking(editingGroupId, {
+        const payload = {
           ...details,
           courts: chosenCourts,
           date: manualDate.value,
           time,
           duration,
-          source: editingSource,
-          stripeSessionId: editingSessionId,
           pricePerCourtCents: Math.round(computePrice(manualDate.value, time, duration) * 100)
-        });
-        // If staff turned a one-off booking into a weekly repeat, build the
-        // series now (starting the week after this date).
-        const repeatWeeks = Math.max(1, Number(manualRepeat && manualRepeat.value) || 1);
-        if (!editingSeriesId && repeatWeeks > 1) {
-          const res = await window.MWBC_STORE.makeRecurring(editingGroupId, {
-            ...details,
-            courts: chosenCourts,
-            date: manualDate.value,
-            time,
-            duration,
-            pricePerCourtCents: Math.round(computePrice(manualDate.value, time, duration) * 100)
-          }, repeatWeeks);
-          if (res && res.skipped > 0) {
+        };
+        if (editingSeriesId && seriesScopeValue() === "future") {
+          // ---- Apply to this occurrence AND all later ones in the series ----
+          const futureCount = Math.max(1, readBookings().filter(
+            (x) => x.seriesId === editingSeriesId && x.date >= editingOrigDate).length);
+          const res = await window.MWBC_STORE.updateSeriesFromDate(editingSeriesId, editingOrigDate, payload, futureCount);
+          if (!res || res.made === 0) { manualNote.textContent = conflictMsg; return; }
+          if (res.skipped > 0) {
             window.alert(isChinese()
-              ? `已设为每周重复，共预订 ${res.made} 周，${res.skipped} 周因冲突跳过。`
-              : `Now repeats weekly: ${res.made} week(s) booked, ${res.skipped} skipped due to conflicts.`);
+              ? `已更新 ${res.made} 次预订，${res.skipped} 次因冲突跳过。`
+              : `Updated ${res.made} booking(s); ${res.skipped} skipped due to conflicts.`);
+          }
+        } else {
+          // ---- Edit just this booking ----
+          savedGroupId = editingGroupId;
+          await window.MWBC_STORE.updateBooking(editingGroupId, {
+            ...payload,
+            source: editingSource,
+            stripeSessionId: editingSessionId
+          });
+          // Keep a recurring occurrence attached to its series after the edit.
+          if (editingSeriesId) {
+            try { await window.MWBC_STORE.setSeriesId(editingGroupId, editingSeriesId); } catch { /* non-critical */ }
+          }
+          // If staff turned a one-off booking into a weekly repeat, build it now.
+          const repeatWeeks = Math.max(1, Number(manualRepeat && manualRepeat.value) || 1);
+          if (!editingSeriesId && repeatWeeks > 1) {
+            const res = await window.MWBC_STORE.makeRecurring(editingGroupId, payload, repeatWeeks);
+            if (res && res.skipped > 0) {
+              window.alert(isChinese()
+                ? `已设为每周重复，共预订 ${res.made} 周，${res.skipped} 周因冲突跳过。`
+                : `Now repeats weekly: ${res.made} week(s) booked, ${res.skipped} skipped due to conflicts.`);
+            }
           }
         }
       } else {

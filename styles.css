@@ -1600,6 +1600,22 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 }
 .split-hour:hover { border-color: var(--ink-soft); }
 .split-hour.is-paid { background: #3f4b56; border-color: #3f4b56; color: #fff; }
+
+/* Recurring-edit scope: "this booking only" vs "this & all future". */
+.series-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  margin: 0.25rem 0;
+  padding: 0.65rem 0.8rem;
+  background: rgba(13, 78, 160, 0.05);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+}
+.series-scope-label { width: 100%; font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); }
+.scope-opt { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+.scope-opt input { accent-color: var(--blue); }
 .type-legend .type-legend-label { font-weight: 700; }
 .legend-online {
   display: inline-block;
