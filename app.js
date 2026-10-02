@@ -392,8 +392,8 @@ function populateConfirmation(booking) {
   confirmationTime.textContent = displayTimeValue(booking.time);
   confirmationDuration.textContent = formatDuration(booking.duration);
   confirmationCourts.textContent = isChinese()
-    ? `${booking.courtCount} 片场地（系统自动分配）`
-    : `${booking.courtCount} ${booking.courtCount === 1 ? "court" : "courts"}, assigned automatically`;
+    ? `${booking.courtCount} 片场地`
+    : `${booking.courtCount} ${booking.courtCount === 1 ? "court" : "courts"}`;
   confirmationTotal.textContent = `$${booking.price}`;
   confirmationCancellation.textContent = formatCancellationNotice(booking.cancellationHours);
   confirmationEmail.textContent = booking.email;
