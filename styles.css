@@ -1664,6 +1664,14 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .src-phone { background: rgba(31, 128, 67, 0.16); color: var(--green-deep); }
 .pill-paid { background: rgba(31, 128, 67, 0.16); color: var(--green-deep); }
 .pill-partial { background: rgba(124, 136, 150, 0.22); color: #3f4b56; }
+/* Online activity tab: new-count badge, summary strip, new-row highlight. */
+.scope-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 5px; margin-left: 5px; border-radius: 999px; background: #d84040; color: #fff; font-size: 0.66rem; font-weight: 800; }
+.online-summary { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0 0 0.6rem; padding: 0.55rem 0.8rem; background: rgba(13, 78, 160, 0.06); border: 1px solid var(--line-soft); border-radius: 8px; font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+.btn-mark-seen { margin-left: auto; font: inherit; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border: 1px solid var(--blue); border-radius: 6px; background: #fff; color: var(--blue); cursor: pointer; }
+.btn-mark-seen:hover { background: var(--blue); color: #fff; }
+tr.row-new { background: rgba(31, 128, 67, 0.07); }
+.booked-ago { font-size: 0.72rem; color: var(--ink-soft); font-weight: 500; margin-top: 2px; }
+.new-tag { display: inline-block; background: var(--green); color: #fff; font-size: 0.6rem; font-weight: 800; padding: 0 5px; border-radius: 999px; letter-spacing: 0.03em; }
 .pill-unpaid { background: rgba(242, 177, 52, 0.24); color: #7a5200; }
 .table-actions { display: flex; gap: 0.4rem; white-space: nowrap; }
 .table-action.danger { color: #c23b3b; }

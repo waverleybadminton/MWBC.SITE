@@ -728,6 +728,41 @@ function maybeAutoScroll() {
   });
 }
 
+// --- Online booking activity (a daily review queue for staff) ---
+const ONLINE_SEEN_KEY = "mwbc_online_seen";
+function lastOnlineSeenTime() {
+  try { const v = localStorage.getItem(ONLINE_SEEN_KEY); return v ? new Date(v).getTime() : 0; } catch { return 0; }
+}
+function markOnlineSeen() {
+  try { localStorage.setItem(ONLINE_SEEN_KEY, new Date().toISOString()); } catch { /* ignore */ }
+}
+function createdMs(b) { return b.createdAt ? new Date(b.createdAt).getTime() : 0; }
+function onlineBookings() {
+  return readBookings().filter((b) => b.source === "Online").sort((a, b) => createdMs(b) - createdMs(a));
+}
+function newOnlineCount() {
+  const seen = lastOnlineSeenTime();
+  return onlineBookings().filter((b) => createdMs(b) > seen).length;
+}
+function onlineTodayCount() {
+  const today = isoToday();
+  return onlineBookings().filter((b) => {
+    if (!b.createdAt) return false;
+    const d = new Date(b.createdAt);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) === today;
+  }).length;
+}
+function relTime(iso) {
+  const t = iso ? new Date(iso).getTime() : 0;
+  if (!t) return "";
+  const m = Math.floor(Math.max(0, Date.now() - t) / 60000);
+  if (m < 1) return isChinese() ? "刚刚" : "just now";
+  if (m < 60) return isChinese() ? `${m} 分钟前` : `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return isChinese() ? `${h} 小时前` : `${h}h ago`;
+  return isChinese() ? `${Math.floor(h / 24)} 天前` : `${Math.floor(h / 24)}d ago`;
+}
+
 function upcomingBookings() {
   const today = isoToday();
   return readBookings()
@@ -761,11 +796,35 @@ function renderBookings() {
 
   const bookings = listScope === "all" ? upcomingBookings()
     : listScope === "past" ? pastBookings()
+    : listScope === "online" ? onlineBookings()
     : dayBookings;
   if (bookingsListTitle) {
     bookingsListTitle.textContent = listScope === "all" ? t("All upcoming bookings")
       : listScope === "past" ? t("Past bookings")
+      : listScope === "online" ? t("Online bookings")
       : t("Bookings");
+  }
+
+  // Online review queue: badge of new-since-last-check + summary line.
+  const seenTime = lastOnlineSeenTime();
+  const newCount = newOnlineCount();
+  const onlineBadge = document.querySelector("#online-badge");
+  if (onlineBadge) {
+    onlineBadge.textContent = newCount;
+    onlineBadge.hidden = newCount === 0;
+  }
+  const onlineSummary = document.querySelector("#online-summary");
+  if (onlineSummary) {
+    const show = listScope === "online";
+    onlineSummary.hidden = !show;
+    if (show) {
+      const txt = document.querySelector("#online-summary-text");
+      if (txt) {
+        txt.textContent = isChinese()
+          ? `自上次查看以来新增 ${newCount} 个 · 今天共 ${onlineTodayCount()} 个在线预订`
+          : `${newCount} new since you last checked · ${onlineTodayCount()} booked online today`;
+      }
+    }
   }
 
   bookingRows.innerHTML = "";
@@ -775,6 +834,8 @@ function renderBookings() {
       ? t("No upcoming bookings.")
       : listScope === "past"
       ? t("No past bookings.")
+      : listScope === "online"
+      ? t("No online bookings yet.")
       : t("No bookings for this day yet. Click any empty slot above to add one.")}</td>`;
     bookingRows.append(row);
     return;
@@ -785,8 +846,13 @@ function renderBookings() {
     const sourceClass = booking.source === "School" ? "src-school"
       : (booking.source === "Phone" || booking.source === "Manual" ? "src-phone" : "src-online");
     const paidClass = booking.status === "Paid" ? "pill-paid" : (booking.status === "Partial" ? "pill-partial" : "pill-unpaid");
+    const isNewOnline = listScope === "online" && createdMs(booking) > seenTime;
+    if (isNewOnline) row.classList.add("row-new");
+    const bookedLine = listScope === "online" && booking.createdAt
+      ? `<div class="booked-ago">${isNewOnline ? `<span class="new-tag">${isChinese() ? "新" : "NEW"}</span> ` : ""}${isChinese() ? "预订于 " : "booked "}${relTime(booking.createdAt)}</div>`
+      : "";
     row.innerHTML = `
-      <td class="col-date">${displayDate(booking.date, { short: true })}</td>
+      <td class="col-date">${displayDate(booking.date, { short: true })}${bookedLine}</td>
       <td>${escapeHtml(booking.name)}</td>
       <td>${escapeHtml(booking.phone || booking.email || "")}</td>
       <td>${isChinese() ? `${displayTime(booking.time)}，${formatDuration(booking.duration)}` : `${displayTime(booking.time)} for ${formatDuration(booking.duration)}`}</td>
@@ -2100,6 +2166,12 @@ document.querySelectorAll(".list-scope [data-scope]").forEach((button) => {
     bookingsListShell?.classList.toggle("scope-day", listScope === "day");
     renderBookings();
   });
+});
+
+// "Mark reviewed" clears the new-since-last-check badge + highlights.
+document.querySelector("#online-mark-seen")?.addEventListener("click", () => {
+  markOnlineSeen();
+  renderBookings();
 });
 
 // View the court schedule board full screen (native fullscreen, CSS fallback).
