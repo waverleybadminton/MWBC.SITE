@@ -241,6 +241,18 @@ function tagFor(b) {
   const tags = (window.MWBC_STORE && window.MWBC_STORE.customerTags && window.MWBC_STORE.customerTags()) || {};
   return tags[customerKey(b)] || "";
 }
+// As staff type a name/phone, restore an existing customer's saved type so the
+// default "Ordinary" never overwrites a known member/coach/etc.
+function syncCustomerType() {
+  if (!manualType) return;
+  const nm = document.querySelector("#manual-name").value.trim();
+  const existing = tagFor({
+    name: nm === t("Reserved") ? "" : nm,
+    phone: document.querySelector("#manual-phone").value.trim(),
+    email: document.querySelector("#manual-email").value.trim()
+  });
+  if (existing) manualType.value = existing;
+}
 // A distinct, stable colour per school name — shades of purple → pink.
 function schoolColor(name) {
   let h = 0;
@@ -360,7 +372,7 @@ function resetModalFields() {
   manualStatus.value = "Unpaid";
   splitPaidMinutes = [];
   updateSplitNote();
-  if (manualType) manualType.value = "";
+  if (manualType) manualType.value = "ordinary"; // default new bookings to Ordinary
   if (manualRepeat) manualRepeat.value = "1";
   if (manualRepeatField) manualRepeatField.hidden = false;
   if (manualDelete) manualDelete.hidden = true;
@@ -987,6 +999,10 @@ function allocateManualCourts(date, time, duration, firstCourt, count, excludeId
 function bindManualBooking() {
   // Re-grey the courts grid when the time/date/duration changes.
   [manualDate, manualTime, manualDuration].forEach((el) => el && el.addEventListener("change", renderCourtsGrid));
+  ["#manual-name", "#manual-phone", "#manual-email"].forEach((sel) => {
+    const el = document.querySelector(sel);
+    if (el) el.addEventListener("input", syncCustomerType);
+  });
   if (perCourtToggle) perCourtToggle.addEventListener("change", renderPerCourtTimes);
   if (manualStatus) manualStatus.addEventListener("change", updateSplitNote);
   [manualTime, manualDuration].forEach((el) => el && el.addEventListener("change", () => {
