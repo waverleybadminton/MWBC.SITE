@@ -315,7 +315,7 @@ function renderSlots() {
   if (anyGap) {
     const legend = document.createElement("p");
     legend.className = "slot-legend";
-    legend.innerHTML = `<span class="rec">✓ ${t("Best fit")}</span>`;
+    legend.innerHTML = `<span class="rec">✓ ${t("Best fit")}</span> <span class="gap-leg">• ${t("Also available")}</span>`;
     slotList.append(legend);
   }
 

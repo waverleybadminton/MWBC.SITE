@@ -2102,6 +2102,9 @@ html[data-language="zh"] .footer-tagline { text-transform: none; font-stretch: 1
 .slot-clean { border-color: rgba(31, 128, 67, 0.55); background: rgba(31, 128, 67, 0.06); }
 .slot-clean.selected { background: var(--blue); border-color: var(--blue); }
 .slot-button.selected .slot-flag { color: #fff; }
-.slot-gap { opacity: 0.72; }
+/* "Leaves a short gap" — still fully bookable, just flagged with an amber tint. */
+.slot-gap { border-color: rgba(183, 121, 31, 0.45); background: rgba(183, 121, 31, 0.07); }
+.slot-gap.selected { background: var(--blue); border-color: var(--blue); }
 .slot-legend { grid-column: 1 / -1; margin: 0 0 0.15rem; font-size: 0.72rem; color: var(--ink-soft); }
 .slot-legend .rec { color: var(--green-ink); font-weight: 600; }
+.slot-legend .gap-leg { color: #b7791f; font-weight: 600; margin-left: 0.6rem; }
