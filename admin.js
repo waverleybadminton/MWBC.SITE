@@ -1263,7 +1263,7 @@ function buildSeries() {
   const today = isoToday();
   const list = [];
   bySeries.forEach((occ, seriesId) => {
-    if (occ.length < 8) return; // only long-term series
+    if (occ.length < 2) return; // any recurring booking (2+ weeks), any customer type
     const sorted = occ.slice().sort((a, b) => a.date.localeCompare(b.date));
     const last = sorted[sorted.length - 1];
     list.push({
