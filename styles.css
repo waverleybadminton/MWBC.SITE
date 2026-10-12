@@ -211,6 +211,8 @@ html[data-language="zh"] .btn { font-stretch: 100%; letter-spacing: 0.12em; font
   color: var(--ink);
 }
 .btn-ghost-dark:hover { border-color: var(--ink); }
+.btn-duplicate { background: #fff; border: 1px solid var(--blue); color: var(--blue); }
+.btn-duplicate:hover { background: var(--blue); color: #fff; }
 
 .btn-lg { min-height: 56px; padding: 1rem 2.2rem; font-size: 1.02rem; }
 .small-button { min-height: 40px; padding: 0.4rem 1rem; font-size: 0.8rem; }

@@ -95,6 +95,7 @@ const manualModalBackdrop = document.querySelector("#manual-modal-backdrop");
 const manualRepeat = document.querySelector("#manual-repeat");
 const manualRepeatField = document.querySelector("#manual-repeat-field");
 const manualDelete = document.querySelector("#manual-delete");
+const manualDuplicate = document.querySelector("#manual-duplicate");
 const manualSubmit = manualForm.querySelector('button[type="submit"]');
 
 // Which booking group is being edited (null = creating a new one).
@@ -376,6 +377,7 @@ function resetModalFields() {
   if (manualRepeat) manualRepeat.value = "1";
   if (manualRepeatField) manualRepeatField.hidden = false;
   if (manualDelete) manualDelete.hidden = true;
+  if (manualDuplicate) manualDuplicate.hidden = true;
   if (manualSubmit) manualSubmit.textContent = t("Add Booking");
   manualNote.textContent = "";
 }
@@ -416,6 +418,7 @@ function openEditModal(booking) {
     if (thisOpt) thisOpt.checked = true;
   }
   if (manualDelete) manualDelete.hidden = false;
+  if (manualDuplicate) manualDuplicate.hidden = false;
   if (manualSubmit) manualSubmit.textContent = t("Update Booking");
   manualBookingTitle.textContent = t("Edit booking");
   openModal();
@@ -950,7 +953,7 @@ function renderPerCourtTimes() {
   if (!on) { perCourtList.innerHTML = ""; return; }
 
   const times = getScheduleTimes();
-  const durs = [60, 90, 120, 150, 180, 210, 240, 270, 300];
+  const durs = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300];
   const timeOpts = (sel) => times.map((tm) => `<option value="${tm}"${tm === sel ? " selected" : ""}>${displayTime(tm)}</option>`).join("");
   const durOpts = (sel) => durs.map((d) => `<option value="${d}"${d === sel ? " selected" : ""}>${formatDuration(d)}</option>`).join("");
 
@@ -1176,6 +1179,44 @@ function bindManualBooking() {
       if (booking) await cancelBooking(booking.id);
     });
   }
+
+  if (manualDuplicate) manualDuplicate.addEventListener("click", duplicateForNextWeek);
+}
+
+// Copy the booking in the modal to the same day next week as a NEW (unpaid)
+// booking, leaving the modal open so staff can tweak the time before saving.
+function duplicateForNextWeek() {
+  const vals = {
+    name: document.querySelector("#manual-name").value,
+    phone: document.querySelector("#manual-phone").value,
+    email: document.querySelector("#manual-email").value,
+    notes: document.querySelector("#manual-notes").value,
+    courts: manualSelectedCourts.slice(),
+    date: addDays(manualDate.value, 7),
+    time: manualTime.value,
+    duration: manualDuration.value,
+    type: manualType ? manualType.value : ""
+  };
+  resetModalFields(); // -> new-booking mode (no editingGroupId), status Unpaid
+  document.querySelector("#manual-name").value = vals.name;
+  document.querySelector("#manual-phone").value = vals.phone;
+  document.querySelector("#manual-email").value = vals.email;
+  document.querySelector("#manual-notes").value = vals.notes;
+  manualSelectedCourts = vals.courts;
+  manualDate.value = vals.date;
+  manualTime.value = vals.time;
+  manualDuration.value = vals.duration;
+  renderManualOptions();
+  if (manualType) manualType.value = vals.type;
+  manualStatus.value = "Unpaid";
+  updateSplitNote();
+  manualBookingTitle.textContent = isChinese()
+    ? `复制到下周 · ${displayDate(vals.date, { short: true })}`
+    : `Duplicate → ${displayDate(vals.date, { short: true })}`;
+  manualNote.textContent = isChinese()
+    ? "已复制到下周，可微调时间后点击“添加预订”。"
+    : "Copied to next week — tweak the time if needed, then Add Booking.";
+  if (manualSubmit) manualSubmit.textContent = t("Add Booking");
 }
 
 /* ---------- customers (aggregated from bookings) ---------- */
