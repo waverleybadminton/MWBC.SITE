@@ -375,6 +375,19 @@
       return data.length;
     },
 
+    // Delete only certain courts of a group (unpaid bookings — no refund needed).
+    // Use refundCancel with `courts` for paid bookings so the customer is refunded.
+    async removeCourts(groupId, courts) {
+      const nums = (Array.isArray(courts) ? courts : []).map(courtNum).filter((n) => n > 0);
+      if (!nums.length) return this.remove(groupId);
+      const { data, error } = await sb().from("bookings").delete()
+        .eq("group_id", groupId).in("court", nums).select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("nothing_deleted");
+      await this._refresh();
+      return data.length;
+    },
+
     // Record which 60-min segments of a booking are paid (split payment).
     // Pass an empty array to clear it (booking no longer partial).
     async setPaidMinutes(groupId, minutes) {
@@ -457,9 +470,13 @@
     },
 
     // Refund the customer (payment minus the $5 fee) and free the court. Staff only.
-    async refundCancel(groupId) {
+    // Pass `courts` (an array of court numbers) to cancel only those courts of a
+    // multi-court booking — a partial refund of just those courts' price, less $5.
+    async refundCancel(groupId, courts) {
+      const body = { group_id: groupId };
+      if (Array.isArray(courts) && courts.length) body.courts = courts.map(courtNum);
       const { data, error } = await sb().functions.invoke("refund-booking", {
-        body: { group_id: groupId }
+        body
       });
       if (error) throw error;
       if (!data || !data.ok) throw new Error((data && data.error) || "refund_failed");

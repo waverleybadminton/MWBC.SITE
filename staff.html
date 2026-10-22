@@ -19,7 +19,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="./styles.css?v=y82">
+    <link rel="stylesheet" href="./styles.css?v=y83">
   </head>
   <body>
     <a class="skip-link" href="#court-hire">Skip to court booking</a>
@@ -828,6 +828,10 @@
                   <input id="manual-notes" type="text" placeholder="e.g. regular, group, deposit">
                 </label>
                 </div>
+                <div class="court-cancel" id="court-cancel" hidden>
+                  <span class="court-cancel-label">Cancel just one court — this keeps the other courts and refunds only that court (minus the $5 fee):</span>
+                  <div class="court-cancel-list" id="court-cancel-list"></div>
+                </div>
                 <div class="manual-actions">
                   <button class="btn btn-book" type="submit">Add Booking</button>
                   <button class="btn btn-duplicate" type="button" id="manual-duplicate" hidden>Duplicate → next week</button>
@@ -1071,13 +1075,13 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./i18n.js?v=y82"></script>
-    <script src="./mwbc-scheduler.js?v=y82"></script>
-    <script src="./supabase-client.js?v=y82"></script>
-    <script src="./store.js?v=y82"></script>
-    <script src="./main.js?v=y82"></script>
-    <script src="./app.js?v=y82"></script>
-    <script src="./admin.js?v=y82"></script>
+    <script src="./i18n.js?v=y83"></script>
+    <script src="./mwbc-scheduler.js?v=y83"></script>
+    <script src="./supabase-client.js?v=y83"></script>
+    <script src="./store.js?v=y83"></script>
+    <script src="./main.js?v=y83"></script>
+    <script src="./app.js?v=y83"></script>
+    <script src="./admin.js?v=y83"></script>
     <!-- Cloudflare Web Analytics (privacy-friendly, no cookies) -->
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "710b4f76ce4046bf8204d4eea940ec01"}'></script>
     <!-- End Cloudflare Web Analytics -->

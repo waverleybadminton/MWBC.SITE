@@ -96,6 +96,8 @@ const manualRepeat = document.querySelector("#manual-repeat");
 const manualRepeatField = document.querySelector("#manual-repeat-field");
 const manualDelete = document.querySelector("#manual-delete");
 const manualDuplicate = document.querySelector("#manual-duplicate");
+const courtCancel = document.querySelector("#court-cancel");
+const courtCancelList = document.querySelector("#court-cancel-list");
 const manualSubmit = manualForm.querySelector('button[type="submit"]');
 
 // Which booking group is being edited (null = creating a new one).
@@ -378,6 +380,8 @@ function resetModalFields() {
   if (manualRepeatField) manualRepeatField.hidden = false;
   if (manualDelete) manualDelete.hidden = true;
   if (manualDuplicate) manualDuplicate.hidden = true;
+  if (courtCancel) courtCancel.hidden = true;
+  if (courtCancelList) courtCancelList.innerHTML = "";
   if (manualSubmit) manualSubmit.textContent = t("Add Booking");
   manualNote.textContent = "";
 }
@@ -419,9 +423,62 @@ function openEditModal(booking) {
   }
   if (manualDelete) manualDelete.hidden = false;
   if (manualDuplicate) manualDuplicate.hidden = false;
+  renderCourtCancel(booking);
   if (manualSubmit) manualSubmit.textContent = t("Update Booking");
   manualBookingTitle.textContent = t("Edit booking");
   openModal();
+}
+
+// For a booking that spans 2+ courts, show a button per court so staff can
+// cancel just one of them. Paid → refund that court minus $5 via Stripe;
+// unpaid/hold/partial → simply free that court. Single-court bookings use the
+// main "Cancel this booking" button instead, so this stays hidden for them.
+function renderCourtCancel(booking) {
+  if (!courtCancel || !courtCancelList) return;
+  const list = bookingCourts(booking);
+  courtCancelList.innerHTML = "";
+  if (list.length < 2) {
+    courtCancel.hidden = true;
+    return;
+  }
+  const paid = booking.status === "Paid";
+  list.forEach((court) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "court-cancel-btn";
+    btn.textContent = paid
+      ? `${displayCourt(court)} · ${t("cancel & refund")}`
+      : `${displayCourt(court)} · ${t("cancel")}`;
+    btn.addEventListener("click", () => cancelOneCourt(booking.id, court));
+    courtCancelList.appendChild(btn);
+  });
+  courtCancel.hidden = false;
+}
+
+// Cancel a single court of a multi-court booking.
+async function cancelOneCourt(groupId, court) {
+  const booking = readBookings().find((item) => item.id === groupId);
+  if (!booking) return;
+  const remaining = bookingCourts(booking);
+  if (remaining.length < 2) { cancelBooking(groupId); return; }
+  const paid = booking.status === "Paid";
+  const label = `${booking.name} · ${displayCourt(court)} · ${displayTime(booking.time)}`;
+  const prompt = paid
+    ? t("Cancel this one court and refund it minus the $5 fee? The other courts stay booked.")
+    : t("Cancel this one court? The other courts stay booked.");
+  if (!window.confirm(`${prompt}\n\n${label}`)) return;
+  try {
+    if (paid) {
+      const res = await window.MWBC_STORE.refundCancel(groupId, [court]);
+      const refunded = ((res && res.refundedCents) || 0) / 100;
+      window.alert(`${t("Refund complete.")} $${refunded.toFixed(2)}`);
+    } else {
+      await window.MWBC_STORE.removeCourts(groupId, [court]);
+    }
+    closeManualModal();
+  } catch {
+    window.alert(t("Couldn't cancel that court. Please try again."));
+  }
 }
 
 // Click an empty slot → open a booking pre-filled for that court, time and a

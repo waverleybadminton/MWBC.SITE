@@ -1628,6 +1628,29 @@ html[data-language="zh"] .policy-panel h2 { text-transform: none; font-stretch: 
 .series-scope-label { width: 100%; font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); }
 .scope-opt { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
 .scope-opt input { accent-color: var(--blue); }
+
+/* Per-court cancel (only shown when a booking spans 2+ courts). */
+.court-cancel {
+  margin: 0.25rem 0;
+  padding: 0.65rem 0.8rem;
+  background: rgba(176, 42, 42, 0.05);
+  border: 1px solid rgba(176, 42, 42, 0.2);
+  border-radius: 8px;
+}
+.court-cancel-label { display: block; font-size: 0.8rem; font-weight: 700; color: #a3362f; margin-bottom: 0.5rem; }
+.court-cancel-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.court-cancel-btn {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(176, 42, 42, 0.4);
+  background: #fff;
+  color: #a3362f;
+}
+.court-cancel-btn:hover { background: #a3362f; color: #fff; border-color: #a3362f; }
 .type-legend .type-legend-label { font-weight: 700; }
 .legend-online {
   display: inline-block;
