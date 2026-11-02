@@ -1,6 +1,5 @@
 (() => {
 const courts = Array.from({ length: 14 }, (_, index) => `Court ${index + 1}`);
-const closeHour = 23;
 const i18n = window.MWBC_I18N;
 const t = (key, variables) => i18n?.t(key, variables) || key;
 const isChinese = () => i18n?.isChinese() || false;
@@ -176,18 +175,25 @@ function isWeekend(dateValue) {
   return day === 0 || day === 6;
 }
 
+// Public holidays: peak pricing ($32/hr) all day, plus any special opening
+// hours (open/close as 24h hours). Keep this in sync with app.js,
+// mwbc-scheduler.js and the create-checkout edge function.
+const PEAK_HOLIDAYS = {
+  "2026-11-03": { open: 8, close: 24 } // Melbourne Cup Day — 8am to midnight
+};
+function isPeakDay(dateValue) {
+  return isWeekend(dateValue) || Boolean(PEAK_HOLIDAYS[dateValue]);
+}
+
 function openingHour(dateValue) {
+  const h = PEAK_HOLIDAYS[dateValue];
+  if (h) return h.open;
   return isWeekend(dateValue) ? 8 : 9;
 }
 
-// Public holidays: peak pricing ($32/hr) applies ALL day, like a weekend.
-// (Opening hours and cancellation windows still follow the day of week.)
-// Keep this list in sync with app.js and the create-checkout edge function.
-const PEAK_HOLIDAYS = new Set([
-  "2026-11-03" // Melbourne Cup Day
-]);
-function isPeakDay(dateValue) {
-  return isWeekend(dateValue) || PEAK_HOLIDAYS.has(dateValue);
+function closingHour(dateValue) {
+  const h = PEAK_HOLIDAYS[dateValue];
+  return h ? h.close : 23;
 }
 
 function hourlyRate(dateValue, minutes) {
@@ -226,7 +232,8 @@ const SLOT_MIN = 30; // board grid resolution (30-min rows); off-grid bookings a
 function getScheduleTimes() {
   const times = [];
   const openHour = openingHour(adminDate.value);
-  for (let minutes = openHour * 60; minutes < closeHour * 60; minutes += SLOT_MIN) {
+  const closeH = closingHour(adminDate.value);
+  for (let minutes = openHour * 60; minutes < closeH * 60; minutes += SLOT_MIN) {
     times.push(timeFromMinutes(minutes));
   }
   return times;
@@ -862,7 +869,7 @@ function pastBookings() {
 function renderBookings() {
   const dayBookings = selectedDateBookings();
   // Metrics always describe the selected day, whatever the list is showing.
-  const totalMinutes = courts.length * (closeHour - openingHour(adminDate.value)) * 60;
+  const totalMinutes = courts.length * (closingHour(adminDate.value) - openingHour(adminDate.value)) * 60;
   const bookedMinutes = dayBookings.reduce((sum, booking) => {
     return sum + Number(booking.duration || 0) * Math.max(1, bookingCourts(booking).length);
   }, 0);

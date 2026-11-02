@@ -20,7 +20,11 @@
 (() => {
   const SLOT = 30;                 // scheduling granularity (minutes)
   const MIN_BOOKING = 60;          // shortest sellable block → gaps below this are "dead"
-  const CLOSE_MIN = 23 * 60;       // centre closes 11pm
+  // Public holidays: special hours + peak-all-day. Keep in sync with app.js,
+  // admin.js and the create-checkout edge function.
+  const PEAK_HOLIDAYS = {
+    "2026-11-03": { open: 8, close: 24 } // Melbourne Cup Day — 8am to midnight
+  };
   const COURT_TOTAL = 14;
   const COURTS = Array.from({ length: COURT_TOTAL }, (_, i) => `Court ${i + 1}`);
 
@@ -32,9 +36,12 @@
     const d = new Date(`${dateISO}T12:00:00`).getDay();
     return d === 0 || d === 6;
   };
-  const openingMin = (dateISO) => (isWeekend(dateISO) ? 8 : 9) * 60;
-  // Peak = weekday evenings (5pm onward) and all weekend — mirrors peak pricing.
-  const isPeakAt = (dateISO, minutes) => isWeekend(dateISO) || minutes >= 17 * 60;
+  const openingMin = (dateISO) =>
+    (PEAK_HOLIDAYS[dateISO] ? PEAK_HOLIDAYS[dateISO].open : (isWeekend(dateISO) ? 8 : 9)) * 60;
+  const closingMin = (dateISO) =>
+    (PEAK_HOLIDAYS[dateISO] ? PEAK_HOLIDAYS[dateISO].close : 23) * 60;
+  // Peak = weekday evenings (5pm onward), all weekend, and public holidays — mirrors peak pricing.
+  const isPeakAt = (dateISO, minutes) => isWeekend(dateISO) || Boolean(PEAK_HOLIDAYS[dateISO]) || minutes >= 17 * 60;
 
   const bookingCourts = (b) =>
     Array.isArray(b.courts) ? b.courts : (b.court ? [b.court] : []);
@@ -49,10 +56,10 @@
 
   // The maximal free interval containing [tStart, tEnd) on a court,
   // or null if the booking would fall out of hours or overlap an existing one.
-  function freeSlotAround(busy, openMin, tStart, tEnd) {
-    if (tStart < openMin || tEnd > CLOSE_MIN) return null;
+  function freeSlotAround(busy, openMin, closeMin, tStart, tEnd) {
+    if (tStart < openMin || tEnd > closeMin) return null;
     let fStart = openMin;
-    let fEnd = CLOSE_MIN;
+    let fEnd = closeMin;
     for (const [s, e] of busy) {
       if (tStart < e && s < tEnd) return null;      // overlaps a booking
       if (e <= tStart) fStart = Math.max(fStart, e); // nearest booking on the left
@@ -79,11 +86,12 @@
     const tStart = toMin(time);
     const tEnd = tStart + Number(duration);
     const openMin = openingMin(dateISO);
+    const closeMin = closingMin(dateISO);
     const peak = isPeakAt(dateISO, tStart) || isPeakAt(dateISO, tEnd - SLOT);
     const scored = [];
     COURTS.forEach((court, idx) => {
       const busy = busyForCourt(bookings, dateISO, court);
-      const free = freeSlotAround(busy, openMin, tStart, tEnd);
+      const free = freeSlotAround(busy, openMin, closeMin, tStart, tEnd);
       if (!free) return;
       scored.push({ court, idx, cost: placementCost(free, tStart, tEnd, busy.length === 0, peak) });
     });
@@ -106,10 +114,11 @@
     const tStart = toMin(time);
     const tEnd = tStart + Number(duration);
     const openMin = openingMin(dateISO);
+    const closeMin = closingMin(dateISO);
     let dead = 0;
     chosen.forEach(({ court }) => {
       const busy = busyForCourt(bookings, dateISO, court);
-      const free = freeSlotAround(busy, openMin, tStart, tEnd);
+      const free = freeSlotAround(busy, openMin, closeMin, tStart, tEnd);
       if (!free) return;
       const left = tStart - free.fStart;
       const right = free.fEnd - tEnd;

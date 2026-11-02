@@ -91,17 +91,25 @@ function isWeekend(dateValue) {
   return day === 0 || day === 6;
 }
 
+// Public holidays: peak pricing ($32/hr) all day, plus any special opening
+// hours (open/close as 24h hours). Keep this in sync with admin.js,
+// mwbc-scheduler.js and the create-checkout edge function.
+const PEAK_HOLIDAYS = {
+  "2026-11-03": { open: 8, close: 24 } // Melbourne Cup Day — 8am to midnight
+};
+function isPeakDay(dateValue) {
+  return isWeekend(dateValue) || Boolean(PEAK_HOLIDAYS[dateValue]);
+}
+
 function openingHour(dateValue) {
+  const h = PEAK_HOLIDAYS[dateValue];
+  if (h) return h.open;
   return isWeekend(dateValue) ? 8 : 9;
 }
 
-// Public holidays: peak pricing ($32/hr) applies ALL day, like a weekend.
-// (Opening hours and cancellation windows still follow the day of week.)
-const PEAK_HOLIDAYS = new Set([
-  "2026-11-03" // Melbourne Cup Day
-]);
-function isPeakDay(dateValue) {
-  return isWeekend(dateValue) || PEAK_HOLIDAYS.has(dateValue);
+function closingHour(dateValue) {
+  const h = PEAK_HOLIDAYS[dateValue];
+  return h ? h.close : 23;
 }
 
 function hourlyRate(dateValue, minutes) {
@@ -187,9 +195,10 @@ function slotPeriod(hour) {
 
 function generateSlots(dateValue = dateInput.value) {
   const slots = [];
-  for (let hour = openingHour(dateValue); hour <= 22; hour += 1) {
+  const lastHour = closingHour(dateValue) - 1; // min booking is 1h, so no later start
+  for (let hour = openingHour(dateValue); hour <= lastHour; hour += 1) {
     for (const minute of [0, 30]) {
-      if (hour === 22 && minute === 30) continue;
+      if (hour === lastHour && minute === 30) continue;
       slots.push({
         time: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
         period: slotPeriod(hour)
@@ -201,7 +210,7 @@ function generateSlots(dateValue = dateInput.value) {
 
 function fitsOpeningHours(dateValue, time, duration) {
   const start = minutesFromTime(time);
-  return start >= openingHour(dateValue) * 60 && start + Number(duration) <= 23 * 60;
+  return start >= openingHour(dateValue) * 60 && start + Number(duration) <= closingHour(dateValue) * 60;
 }
 
 function isPastSlot(dateValue, time) {
