@@ -180,8 +180,18 @@ function openingHour(dateValue) {
   return isWeekend(dateValue) ? 8 : 9;
 }
 
+// Public holidays: peak pricing ($32/hr) applies ALL day, like a weekend.
+// (Opening hours and cancellation windows still follow the day of week.)
+// Keep this list in sync with app.js and the create-checkout edge function.
+const PEAK_HOLIDAYS = new Set([
+  "2026-11-03" // Melbourne Cup Day
+]);
+function isPeakDay(dateValue) {
+  return isWeekend(dateValue) || PEAK_HOLIDAYS.has(dateValue);
+}
+
 function hourlyRate(dateValue, minutes) {
-  if (isWeekend(dateValue)) return 32;
+  if (isPeakDay(dateValue)) return 32;
   return minutes >= 17 * 60 ? 32 : 22;
 }
 

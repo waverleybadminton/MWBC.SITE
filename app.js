@@ -95,8 +95,17 @@ function openingHour(dateValue) {
   return isWeekend(dateValue) ? 8 : 9;
 }
 
+// Public holidays: peak pricing ($32/hr) applies ALL day, like a weekend.
+// (Opening hours and cancellation windows still follow the day of week.)
+const PEAK_HOLIDAYS = new Set([
+  "2026-11-03" // Melbourne Cup Day
+]);
+function isPeakDay(dateValue) {
+  return isWeekend(dateValue) || PEAK_HOLIDAYS.has(dateValue);
+}
+
 function hourlyRate(dateValue, minutes) {
-  if (isWeekend(dateValue)) return 32;
+  if (isPeakDay(dateValue)) return 32;
   return minutes >= 17 * 60 ? 32 : 22;
 }
 
@@ -118,7 +127,9 @@ function computePrice(dateValue, time, duration, courtCount = selectedCourtCount
 }
 
 function cancellationHours(dateValue, courtCount = selectedCourtCount()) {
-  return (isWeekend(dateValue) ? 48 : 24) * courtCount;
+  // Weekends and public holidays need 48h notice (matches the policy copy);
+  // weekdays 24h.
+  return (isPeakDay(dateValue) ? 48 : 24) * courtCount;
 }
 
 function formatCancellationNotice(hours) {
