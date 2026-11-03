@@ -7,7 +7,7 @@
   <title>Cancel a booking · Mount Waverley Badminton Centre</title>
   <style>
     :root {
-      --navy: #0a2540; --navy-soft: #0b2137; --green: #1f8043; --green-soft: #2f5d47;
+      --navy: #0a2540; --green: #1f8043; --green-soft: #2f5d47;
       --ink: #12263a; --ink-soft: #4a5a6a; --line: #e4e9f0; --bg: #f4f6fa;
       --danger: #a3362f;
     }
@@ -24,24 +24,32 @@
     .card-head h1 { font-size: 21px; font-weight: 700; color: #fff; margin: 4px 0 0; }
     .card-body { padding: 24px; }
     .muted { color: var(--ink-soft); font-size: 14px; }
-    .rows { width: 100%; border-collapse: collapse; border-top: 1px solid var(--line); margin: 6px 0 4px; }
+    .rows { width: 100%; border-collapse: collapse; margin: 0; }
+    .rows.top { border-top: 1px solid var(--line); }
     .rows td { padding: 8px 0; font-size: 14px; }
     .rows td:first-child { color: var(--ink-soft); font-size: 13px; }
     .rows td:last-child { text-align: right; }
     .rows tr.total td { font-weight: 700; border-top: 1px solid var(--line); }
-    .note { margin: 16px 0; padding: 12px 14px; border-radius: 8px; font-size: 13px; }
+    .pick { margin: 14px 0 2px; }
+    .pick-label { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin: 0 0 8px; }
+    .court-opt {
+      display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin-bottom: 6px;
+      border: 1px solid var(--line); border-radius: 8px; font-size: 14px; cursor: pointer;
+    }
+    .court-opt input { width: 17px; height: 17px; accent-color: var(--danger); }
+    .note { margin: 16px 0 0; padding: 12px 14px; border-radius: 8px; font-size: 13px; }
     .note.ok { background: #f0f7f3; color: var(--green-soft); }
     .note.warn { background: #fdf3f2; color: var(--danger); }
     .btn {
       display: inline-block; width: 100%; border: 0; border-radius: 9px; cursor: pointer;
-      font: inherit; font-weight: 600; padding: 13px 18px; text-align: center; margin-top: 6px;
+      font: inherit; font-weight: 600; padding: 13px 18px; text-align: center; margin-top: 10px;
     }
     .btn-danger { background: var(--danger); color: #fff; }
     .btn-danger:hover { background: #8a2b25; }
     .btn-ghost { background: #fff; color: var(--ink-soft); border: 1px solid var(--line); }
     .btn-ghost:hover { background: #f4f6fa; }
-    .btn:disabled { opacity: .55; cursor: default; }
-    .confirm-row { display: flex; gap: 10px; margin-top: 6px; }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .confirm-row { display: flex; gap: 10px; }
     .confirm-row .btn { margin-top: 0; }
     .foot { text-align: center; font-size: 12px; color: #9aa7b4; margin-top: 16px; }
     .foot a { color: #9aa7b4; }
@@ -66,23 +74,30 @@
         <p id="status" class="muted">Loading your booking…</p>
 
         <div id="detail" class="hidden">
-          <table class="rows">
+          <table class="rows top">
             <tr><td id="l-when">When</td><td id="v-when"></td></tr>
-            <tr><td id="l-courts">Courts</td><td id="v-courts"></td></tr>
             <tr><td id="l-paid">Paid</td><td id="v-paid"></td></tr>
+          </table>
+
+          <div id="pick" class="pick hidden">
+            <p id="pick-label" class="pick-label">Choose which courts to cancel</p>
+            <div id="court-list"></div>
+          </div>
+
+          <table class="rows">
+            <tr><td id="l-cancelling">Cancelling</td><td id="v-cancelling"></td></tr>
             <tr class="total"><td id="l-refund">Refund to you</td><td id="v-refund"></td></tr>
           </table>
-          <p id="fee-note" class="muted" style="font-size:12px;margin:4px 0 0"></p>
+          <p id="fee-note" class="muted" style="font-size:12px;margin:6px 0 0"></p>
 
           <div id="policy-ok" class="hidden">
             <p id="policy-ok-note" class="note ok"></p>
-            <button id="start-cancel" class="btn btn-danger" type="button">Cancel this booking</button>
+            <button id="start-cancel" class="btn btn-danger" type="button">Cancel</button>
             <div id="confirm-row" class="confirm-row hidden">
               <button id="keep" class="btn btn-ghost" type="button">Keep it</button>
               <button id="do-cancel" class="btn btn-danger" type="button">Yes, cancel</button>
             </div>
           </div>
-
           <div id="policy-late" class="hidden">
             <p id="policy-late-note" class="note warn"></p>
           </div>
@@ -95,13 +110,15 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-client.js?v=y88"></script>
+  <script src="./supabase-client.js?v=y89"></script>
   <script>
   (function () {
     var params = new URLSearchParams(location.search);
     var sessionId = params.get("s") || "";
     var lang = params.get("lang") === "zh" ? "zh" : "en";
-    var data = null; // the loaded booking info
+    var data = null;              // loaded booking info from the server
+    var selected = {};            // court number -> true when ticked to cancel
+    var done = false;             // true once a refund has completed
 
     var S = {
       en: {
@@ -110,18 +127,23 @@
         notFound: "We couldn't find this booking — it may have already been cancelled. Call us if you need a hand.",
         serverErr: "Something went wrong loading your booking. Please try again, or call us.",
         noId: "This link is missing its booking details. Please use the link from your confirmation email.",
-        when: "When", courts: "Courts", paid: "Paid", refund: "Refund to you",
+        when: "When", paid: "Paid", refund: "Refund to you", cancelling: "Cancelling",
+        pickLabel: "Choose which courts to cancel",
         feeNote: "A $5 cancellation fee is kept on every cancellation.",
-        okNote: "You're within the cancellation window. Cancelling frees the court and refunds your payment to your card, minus the $5 fee.",
-        lateNote: "This booking is too close to its start time to cancel online. Our policy needs at least {h} of notice for this booking ({courts} court(s)). Please call us if you need help.",
-        startBtn: "Cancel this booking",
+        okNote: "You're within the cancellation window — this frees the court(s) and refunds to your card, minus the $5 fee.",
+        lateSome: "That needs {req} of notice — more than this booking has left. You can cancel up to {max} of your {total} courts right now; untick some above, or call us for the rest.",
+        lateNone: "This booking is too close to its start time to cancel online. Please call us if you'd like to cancel.",
+        lateOne: "This booking is too close to its start time to cancel online. Our policy needs {req} of notice. Please call us.",
+        startBtn: "Cancel",
+        startBtnN: "Cancel {n} court(s)",
         keepBtn: "Keep it",
         yesBtn: "Yes, cancel",
         working: "Processing your refund…",
-        done: "Done — your booking is cancelled and {amt} has been refunded to your card. It can take a few days to appear. You'll get no further email.",
-        failLate: "Sorry — this booking can no longer be cancelled online. Please call us.",
+        done: "Done — {amt} has been refunded to your card and the court(s) are freed. Refunds can take a few days to appear.",
+        failLate: "Sorry — this can no longer be cancelled online. Please call us.",
         failed: "Something went wrong. Please try again, or call us.",
         footHelp: "Need help? Call",
+        none: "—",
         court: function (n) { return "Court " + n; }
       },
       zh: {
@@ -130,18 +152,23 @@
         notFound: "找不到此预订——可能已被取消。如需协助请来电。",
         serverErr: "加载预订时出现问题，请重试或来电。",
         noId: "此链接缺少预订信息，请使用确认邮件中的链接。",
-        when: "时间", courts: "场地", paid: "已付", refund: "退款给您",
+        when: "时间", paid: "已付", refund: "退款给您", cancelling: "取消",
+        pickLabel: "选择要取消的场地",
         feeNote: "每次取消均保留 $5 取消费。",
-        okNote: "您在可取消时间范围内。取消将释放场地，并将款项退回您的银行卡（扣除 $5 取消费）。",
-        lateNote: "此预订距开始时间过近，无法在线取消。根据规定，此预订（{courts} 个场地）需至少提前 {h}。如需协助请来电。",
-        startBtn: "取消此预订",
+        okNote: "您在可取消时间范围内——将释放场地并退回您的银行卡（扣除 $5 取消费）。",
+        lateSome: "此操作需要提前 {req}，超过了当前剩余时间。您现在最多可取消 {total} 个场地中的 {max} 个；请在上方取消勾选部分场地，其余可来电处理。",
+        lateNone: "此预订距开始时间过近，无法在线取消。如需取消请来电。",
+        lateOne: "此预订距开始时间过近，无法在线取消。根据规定需提前 {req}。请来电。",
+        startBtn: "取消",
+        startBtnN: "取消 {n} 个场地",
         keepBtn: "保留",
         yesBtn: "确认取消",
         working: "正在处理退款…",
-        done: "已完成——您的预订已取消，{amt} 已退回您的银行卡，可能需要几天到账。不会再收到其他邮件。",
-        failLate: "抱歉，此预订已无法在线取消，请来电。",
+        done: "已完成——{amt} 已退回您的银行卡，场地已释放。退款可能需要几天到账。",
+        failLate: "抱歉，已无法在线取消，请来电。",
         failed: "出现问题，请重试或来电。",
         footHelp: "需要帮助？请致电",
+        none: "—",
         court: function (n) { return n + " 号场"; }
       }
     };
@@ -166,16 +193,31 @@
       if (h % 24 === 0) { var d = h / 24; return d + (d > 1 ? " days" : " day"); }
       return h + " hours";
     }
+    function courtNames(nums) {
+      return nums.map(function (c) { return t().court(c); }).join(lang === "zh" ? "、" : ", ");
+    }
+
+    // Everything the policy decision needs, computed from the current ticks.
+    function calc() {
+      var ticked = data.courts.filter(function (c) { return selected[c.court]; });
+      var k = ticked.length;
+      var requiredHours = k * data.baseHours;
+      var refundable = k >= 1 && data.hoursUntil >= requiredHours;
+      var cleanFull = k === data.totalCourts && data.priorRefundCents === 0;
+      var gross = cleanFull ? data.paidCents : ticked.reduce(function (s, c) { return s + c.priceCents; }, 0);
+      var refundCents = Math.max(0, Math.min(gross - data.feeCents, data.maxRefundableCents));
+      return { ticked: ticked, k: k, requiredHours: requiredHours, refundable: refundable, refundCents: refundCents };
+    }
 
     function applyStaticLang() {
       document.documentElement.lang = lang === "zh" ? "zh" : "en";
       el("heading").textContent = t().heading;
       el("l-when").textContent = t().when;
-      el("l-courts").textContent = t().courts;
       el("l-paid").textContent = t().paid;
       el("l-refund").textContent = t().refund;
+      el("l-cancelling").textContent = t().cancelling;
+      el("pick-label").textContent = t().pickLabel;
       el("fee-note").textContent = t().feeNote;
-      el("start-cancel").textContent = t().startBtn;
       el("keep").textContent = t().keepBtn;
       el("do-cancel").textContent = t().yesBtn;
       el("foot-help").textContent = t().footHelp;
@@ -183,32 +225,95 @@
       el("lang-zh").classList.toggle("on", lang === "zh");
     }
 
-    function showStatus(msg) { el("status").textContent = msg; el("status").classList.remove("hidden"); el("detail").classList.add("hidden"); }
+    function showStatus(msg) {
+      el("status").textContent = msg;
+      el("status").classList.remove("hidden");
+      el("detail").classList.add("hidden");
+    }
+
+    function buildCourtList() {
+      var box = el("court-list");
+      box.innerHTML = "";
+      data.courts.forEach(function (c) {
+        var lbl = document.createElement("label");
+        lbl.className = "court-opt";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = !!selected[c.court];
+        cb.addEventListener("change", function () {
+          selected[c.court] = cb.checked;
+          resetConfirm();
+          renderSelection();
+        });
+        var span = document.createElement("span");
+        span.textContent = t().court(c.court);
+        lbl.appendChild(cb); lbl.appendChild(span);
+        box.appendChild(lbl);
+      });
+    }
+
+    function resetConfirm() {
+      el("confirm-row").classList.add("hidden");
+      el("start-cancel").classList.remove("hidden");
+      el("start-cancel").disabled = false;
+    }
+
+    // Re-render the parts that depend on which courts are ticked.
+    function renderSelection() {
+      if (done) return;
+      var c = calc();
+      el("v-cancelling").textContent = c.k ? courtNames(c.ticked.map(function (x) { return x.court; })) : t().none;
+      el("v-refund").textContent = money(c.refundCents);
+      el("start-cancel").textContent = data.totalCourts > 1
+        ? (lang === "zh" ? ("取消 " + c.k + " 个场地") : ("Cancel " + c.k + (c.k === 1 ? " court" : " courts")))
+        : t().startBtn;
+      el("start-cancel").disabled = c.k < 1;
+
+      if (c.refundable) {
+        el("policy-ok").classList.remove("hidden");
+        el("policy-late").classList.add("hidden");
+        el("policy-ok-note").className = "note ok";
+        el("policy-ok-note").textContent = t().okNote;
+      } else {
+        el("policy-ok").classList.add("hidden");
+        el("policy-late").classList.remove("hidden");
+        var msg;
+        if (data.totalCourts === 1) {
+          msg = t().lateOne.replace("{req}", fmtNotice(data.baseHours));
+        } else if (data.maxCancellable === 0) {
+          msg = t().lateNone;
+        } else {
+          msg = t().lateSome
+            .replace("{req}", fmtNotice(c.requiredHours))
+            .replace("{max}", data.maxCancellable)
+            .replace("{total}", data.totalCourts);
+        }
+        el("policy-late-note").textContent = msg;
+      }
+    }
 
     function renderDetail() {
       applyStaticLang();
       el("status").classList.add("hidden");
       el("detail").classList.remove("hidden");
       el("v-when").textContent = fmtDate(data.date) + " · " + fmtTime(data.startMin) + "–" + fmtTime(data.endMin);
-      el("v-courts").textContent = data.courts.map(function (c) { return t().court(c); }).join(lang === "zh" ? "、" : ", ");
       el("v-paid").textContent = money(data.paidCents);
-      el("v-refund").textContent = money(data.refundCents);
-      el("policy-ok").classList.toggle("hidden", !data.refundable);
-      el("policy-late").classList.toggle("hidden", data.refundable);
-      if (data.refundable) {
-        el("policy-ok-note").textContent = t().okNote;
-        el("confirm-row").classList.add("hidden");
-        el("start-cancel").classList.remove("hidden");
-        el("start-cancel").disabled = false;
+      // Multi-court bookings get a court picker; single-court ones don't need it.
+      if (data.totalCourts > 1) {
+        el("pick").classList.remove("hidden");
+        buildCourtList();
       } else {
-        el("policy-late-note").textContent = t().lateNote
-          .replace("{h}", fmtNotice(data.requiredHours))
-          .replace("{courts}", data.courts.length);
+        el("pick").classList.add("hidden");
       }
+      resetConfirm();
+      renderSelection();
     }
 
     function invoke(confirmIt) {
-      return window.MWBC_SB.functions.invoke("self-refund", { body: { session_id: sessionId, confirm: confirmIt } });
+      var body = { session_id: sessionId, confirm: confirmIt };
+      var ticked = data ? data.courts.filter(function (c) { return selected[c.court]; }).map(function (c) { return c.court; }) : null;
+      if (ticked && ticked.length) body.courts = ticked;
+      return window.MWBC_SB.functions.invoke("self-refund", { body: body });
     }
 
     function load() {
@@ -216,30 +321,32 @@
       if (!sessionId) { showStatus(t().noId); return; }
       if (!window.MWBC_SB) { showStatus(t().serverErr); return; }
       showStatus(t().loading);
-      invoke(false).then(function (res) {
-        var d = res && res.data;
-        if (!d || !d.ok) { showStatus(t().notFound); return; }
-        data = d; renderDetail();
-      }).catch(function () { showStatus(t().serverErr); });
+      window.MWBC_SB.functions.invoke("self-refund", { body: { session_id: sessionId, confirm: false } })
+        .then(function (res) {
+          var d = res && res.data;
+          if (!d || !d.ok) { showStatus(t().notFound); return; }
+          data = d;
+          selected = {};
+          data.courts.forEach(function (c) { selected[c.court] = true; }); // default: cancel all
+          renderDetail();
+        }).catch(function () { showStatus(t().serverErr); });
     }
 
-    // Two-step confirm so the booking can't be cancelled by an accidental click.
+    // Two-step confirm so a booking can't be cancelled by one accidental click.
     el("start-cancel").addEventListener("click", function () {
       el("start-cancel").classList.add("hidden");
       el("confirm-row").classList.remove("hidden");
     });
-    el("keep").addEventListener("click", function () {
-      el("confirm-row").classList.add("hidden");
-      el("start-cancel").classList.remove("hidden");
-    });
+    el("keep").addEventListener("click", resetConfirm);
     el("do-cancel").addEventListener("click", function () {
-      el("do-cancel").disabled = true;
-      el("keep").disabled = true;
+      el("do-cancel").disabled = true; el("keep").disabled = true;
       el("policy-ok-note").textContent = t().working;
       invoke(true).then(function (res) {
         var d = res && res.data;
         if (d && d.ok && d.refunded) {
+          done = true;
           el("confirm-row").classList.add("hidden");
+          el("pick").classList.add("hidden");
           el("fee-note").classList.add("hidden");
           el("policy-ok-note").className = "note ok";
           el("policy-ok-note").textContent = t().done.replace("{amt}", money(d.refundCents));
@@ -259,7 +366,11 @@
       });
     });
 
-    function switchLang(l) { lang = l; if (data) renderDetail(); else applyStaticLang(); }
+    function switchLang(l) {
+      lang = l;
+      if (data && !done) renderDetail();
+      else applyStaticLang();
+    }
     el("lang-en").addEventListener("click", function () { switchLang("en"); });
     el("lang-zh").addEventListener("click", function () { switchLang("zh"); });
 
