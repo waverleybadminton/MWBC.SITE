@@ -91,11 +91,31 @@ function isWeekend(dateValue) {
   return day === 0 || day === 6;
 }
 
-// Public holidays: peak pricing ($32/hr) all day, plus any special opening
-// hours (open/close as 24h hours). Keep this in sync with admin.js,
-// mwbc-scheduler.js and the create-checkout edge function.
+// Public holidays (VIC): peak pricing ($32/hr) all day, 48h change-notice, and
+// optional special hours. Each entry: {} = peak + normal day-of-week hours;
+// { open, close } = custom hours (close 24 = midnight); { closed: true } = no
+// bookings that day. Keep in sync with admin.js, mwbc-scheduler.js and the
+// create-checkout edge function. (AFL Grand Final Friday is added each year
+// once the AFL confirms the date.)
 const PEAK_HOLIDAYS = {
-  "2026-11-03": { open: 8, close: 24 } // Melbourne Cup Day — 8am to midnight
+  "2026-11-03": { open: 8, close: 24 }, // Melbourne Cup Day — 8am–midnight
+  "2026-12-25": {}, // Christmas Day
+  "2026-12-26": {}, // Boxing Day
+  "2026-12-28": {}, // Boxing Day holiday
+  "2027-01-01": {}, // New Year's Day
+  "2027-01-26": {}, // Australia Day
+  "2027-03-08": {}, // Labour Day
+  "2027-03-26": {}, // Good Friday
+  "2027-03-27": {}, // Easter Saturday
+  "2027-03-28": {}, // Easter Sunday
+  "2027-03-29": {}, // Easter Monday
+  "2027-04-25": {}, // ANZAC Day
+  "2027-06-14": {}, // King's Birthday
+  "2027-11-02": {}, // Melbourne Cup Day
+  "2027-12-25": {}, // Christmas Day
+  "2027-12-26": {}, // Boxing Day
+  "2027-12-27": {}, // Christmas Day holiday
+  "2027-12-28": {}  // Boxing Day holiday
 };
 function isPeakDay(dateValue) {
   return isWeekend(dateValue) || Boolean(PEAK_HOLIDAYS[dateValue]);
@@ -103,13 +123,16 @@ function isPeakDay(dateValue) {
 
 function openingHour(dateValue) {
   const h = PEAK_HOLIDAYS[dateValue];
-  if (h) return h.open;
+  if (h && h.closed) return 0;
+  if (h && typeof h.open === "number") return h.open;
   return isWeekend(dateValue) ? 8 : 9;
 }
 
 function closingHour(dateValue) {
   const h = PEAK_HOLIDAYS[dateValue];
-  return h ? h.close : 23;
+  if (h && h.closed) return 0;
+  if (h && typeof h.close === "number") return h.close;
+  return 23;
 }
 
 function hourlyRate(dateValue, minutes) {

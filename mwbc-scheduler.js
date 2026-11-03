@@ -20,10 +20,29 @@
 (() => {
   const SLOT = 30;                 // scheduling granularity (minutes)
   const MIN_BOOKING = 60;          // shortest sellable block → gaps below this are "dead"
-  // Public holidays: special hours + peak-all-day. Keep in sync with app.js,
-  // admin.js and the create-checkout edge function.
+  // Public holidays (VIC): peak-all-day + optional special hours. Each entry:
+  // {} = normal day-of-week hours; { open, close } = custom (close 24 = midnight);
+  // { closed: true } = no bookings. Keep in sync with app.js, admin.js and the
+  // create-checkout edge function.
   const PEAK_HOLIDAYS = {
-    "2026-11-03": { open: 8, close: 24 } // Melbourne Cup Day — 8am to midnight
+    "2026-11-03": { open: 8, close: 24 }, // Melbourne Cup Day — 8am–midnight
+    "2026-12-25": {}, // Christmas Day
+    "2026-12-26": {}, // Boxing Day
+    "2026-12-28": {}, // Boxing Day holiday
+    "2027-01-01": {}, // New Year's Day
+    "2027-01-26": {}, // Australia Day
+    "2027-03-08": {}, // Labour Day
+    "2027-03-26": {}, // Good Friday
+    "2027-03-27": {}, // Easter Saturday
+    "2027-03-28": {}, // Easter Sunday
+    "2027-03-29": {}, // Easter Monday
+    "2027-04-25": {}, // ANZAC Day
+    "2027-06-14": {}, // King's Birthday
+    "2027-11-02": {}, // Melbourne Cup Day
+    "2027-12-25": {}, // Christmas Day
+    "2027-12-26": {}, // Boxing Day
+    "2027-12-27": {}, // Christmas Day holiday
+    "2027-12-28": {}  // Boxing Day holiday
   };
   const COURT_TOTAL = 14;
   const COURTS = Array.from({ length: COURT_TOTAL }, (_, i) => `Court ${i + 1}`);
@@ -36,10 +55,18 @@
     const d = new Date(`${dateISO}T12:00:00`).getDay();
     return d === 0 || d === 6;
   };
-  const openingMin = (dateISO) =>
-    (PEAK_HOLIDAYS[dateISO] ? PEAK_HOLIDAYS[dateISO].open : (isWeekend(dateISO) ? 8 : 9)) * 60;
-  const closingMin = (dateISO) =>
-    (PEAK_HOLIDAYS[dateISO] ? PEAK_HOLIDAYS[dateISO].close : 23) * 60;
+  const openingMin = (dateISO) => {
+    const h = PEAK_HOLIDAYS[dateISO];
+    if (h && h.closed) return 0;
+    if (h && typeof h.open === "number") return h.open * 60;
+    return (isWeekend(dateISO) ? 8 : 9) * 60;
+  };
+  const closingMin = (dateISO) => {
+    const h = PEAK_HOLIDAYS[dateISO];
+    if (h && h.closed) return 0;
+    if (h && typeof h.close === "number") return h.close * 60;
+    return 23 * 60;
+  };
   // Peak = weekday evenings (5pm onward), all weekend, and public holidays — mirrors peak pricing.
   const isPeakAt = (dateISO, minutes) => isWeekend(dateISO) || Boolean(PEAK_HOLIDAYS[dateISO]) || minutes >= 17 * 60;
 
