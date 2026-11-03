@@ -20,12 +20,14 @@
 (() => {
   const SLOT = 30;                 // scheduling granularity (minutes)
   const MIN_BOOKING = 60;          // shortest sellable block → gaps below this are "dead"
-  // Public holidays (VIC): peak-all-day + optional special hours. Each entry:
-  // {} = normal day-of-week hours; { open, close } = custom (close 24 = midnight);
-  // { closed: true } = no bookings. Keep in sync with app.js, admin.js and the
-  // create-checkout edge function.
+  // Public holidays (VIC): peak-all-day + 8am–midnight hours by default. Each
+  // entry: {} = default (peak + 8am–midnight); { open, close } = custom (close
+  // 24 = midnight); { closed: true } = no bookings. Keep in sync with app.js,
+  // admin.js and the create-checkout edge function.
+  const HOLIDAY_OPEN = 8;   // public holidays open 8am…
+  const HOLIDAY_CLOSE = 24; // …through to midnight
   const PEAK_HOLIDAYS = {
-    "2026-11-03": { open: 8, close: 24 }, // Melbourne Cup Day — 8am–midnight
+    "2026-11-03": {}, // Melbourne Cup Day
     "2026-12-25": {}, // Christmas Day
     "2026-12-26": {}, // Boxing Day
     "2026-12-28": {}, // Boxing Day holiday
@@ -57,14 +59,18 @@
   };
   const openingMin = (dateISO) => {
     const h = PEAK_HOLIDAYS[dateISO];
-    if (h && h.closed) return 0;
-    if (h && typeof h.open === "number") return h.open * 60;
+    if (h) {
+      if (h.closed) return 0;
+      return (typeof h.open === "number" ? h.open : HOLIDAY_OPEN) * 60;
+    }
     return (isWeekend(dateISO) ? 8 : 9) * 60;
   };
   const closingMin = (dateISO) => {
     const h = PEAK_HOLIDAYS[dateISO];
-    if (h && h.closed) return 0;
-    if (h && typeof h.close === "number") return h.close * 60;
+    if (h) {
+      if (h.closed) return 0;
+      return (typeof h.close === "number" ? h.close : HOLIDAY_CLOSE) * 60;
+    }
     return 23 * 60;
   };
   // Peak = weekday evenings (5pm onward), all weekend, and public holidays — mirrors peak pricing.

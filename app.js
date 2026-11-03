@@ -91,14 +91,17 @@ function isWeekend(dateValue) {
   return day === 0 || day === 6;
 }
 
-// Public holidays (VIC): peak pricing ($32/hr) all day, 48h change-notice, and
-// optional special hours. Each entry: {} = peak + normal day-of-week hours;
-// { open, close } = custom hours (close 24 = midnight); { closed: true } = no
-// bookings that day. Keep in sync with admin.js, mwbc-scheduler.js and the
-// create-checkout edge function. (AFL Grand Final Friday is added each year
-// once the AFL confirms the date.)
+// Public holidays (VIC): peak pricing all day (whatever the peak rate is — they
+// follow it automatically), 48h change-notice, and 8am–midnight hours by
+// default. Each entry: {} = the default (peak + 8am–midnight, HOLIDAY_OPEN/
+// HOLIDAY_CLOSE); { open, close } = custom hours (close 24 = midnight);
+// { closed: true } = no bookings that day. Keep in sync with admin.js,
+// mwbc-scheduler.js and the create-checkout edge function. (AFL Grand Final
+// Friday is added each year once the AFL confirms the date.)
+const HOLIDAY_OPEN = 8;   // public holidays open 8am…
+const HOLIDAY_CLOSE = 24; // …through to midnight
 const PEAK_HOLIDAYS = {
-  "2026-11-03": { open: 8, close: 24 }, // Melbourne Cup Day — 8am–midnight
+  "2026-11-03": {}, // Melbourne Cup Day
   "2026-12-25": {}, // Christmas Day
   "2026-12-26": {}, // Boxing Day
   "2026-12-28": {}, // Boxing Day holiday
@@ -123,15 +126,19 @@ function isPeakDay(dateValue) {
 
 function openingHour(dateValue) {
   const h = PEAK_HOLIDAYS[dateValue];
-  if (h && h.closed) return 0;
-  if (h && typeof h.open === "number") return h.open;
+  if (h) {
+    if (h.closed) return 0;
+    return typeof h.open === "number" ? h.open : HOLIDAY_OPEN;
+  }
   return isWeekend(dateValue) ? 8 : 9;
 }
 
 function closingHour(dateValue) {
   const h = PEAK_HOLIDAYS[dateValue];
-  if (h && h.closed) return 0;
-  if (h && typeof h.close === "number") return h.close;
+  if (h) {
+    if (h.closed) return 0;
+    return typeof h.close === "number" ? h.close : HOLIDAY_CLOSE;
+  }
   return 23;
 }
 
