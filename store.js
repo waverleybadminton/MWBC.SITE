@@ -92,10 +92,13 @@
   }
 
   const store = {
-    _cache: [],
+    _cache: [],       // grouped bookings the UI reads (by group_id)
+    _rows: [],        // the flat DB rows behind _cache, kept live for staff
     _tags: {},
     _authed: false,
     _channel: null,
+    _regroupTimer: null,
+    _lastSync: 0,
     ready: false,
 
     all() {
@@ -144,6 +147,17 @@
         this._resubscribe();
         emit("mwbc-auth-changed", { authed: this._authed });
       });
+      // Safety net: if a staff tab was backgrounded and the realtime socket
+      // dropped, missed changes are caught on refocus — throttled to 5 min so
+      // it never becomes a bandwidth drain itself.
+      if (typeof document !== "undefined") {
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible" && this._authed &&
+              Date.now() - this._lastSync > 5 * 60 * 1000) {
+            this._refresh();
+          }
+        });
+      }
       this.ready = true;
     },
 
@@ -174,12 +188,17 @@
       return { data: all, error: null };
     },
 
+    // Full reload from the database. Used on startup, sign-in/out, after a
+    // staff write, and as an occasional safety resync — NOT on every realtime
+    // change (that path is incremental, see _applyRealtime).
     async _refresh() {
       const client = sb();
       if (!client) return;
       if (this._authed) {
         const { data, error } = await this._loadAllBookings(client);
-        this._cache = error ? [] : groupRows(data || []);
+        this._rows = error ? [] : (data || []);
+        this._cache = groupRows(this._rows);
+        this._lastSync = Date.now();
         try {
           const { data: tags } = await client.from("customer_tags").select("contact_key, tag");
           this._tags = {};
@@ -194,10 +213,41 @@
           from_date: today.toISOString().slice(0, 10),
           to_date: to.toISOString().slice(0, 10)
         });
+        this._rows = [];
         this._cache = error ? [] : pseudoFromAvailability(data || []);
         this._tags = {};
       }
       emit("mwbc-bookings-updated");
+    },
+
+    // Apply ONE realtime change to the in-memory rows, then regroup locally —
+    // so a booking change costs ~nothing instead of re-downloading every row.
+    // Correctness never depends on this: the DB's no-overlap constraint still
+    // rejects any clash, and staff writes always do a full _refresh().
+    _applyRealtime(payload) {
+      if (!Array.isArray(this._rows)) { this._refresh(); return; }
+      const incoming = payload && payload.new && payload.new.id != null ? payload.new : (payload && payload.old);
+      if (!incoming || incoming.id == null) { this._refresh(); return; } // unexpected shape → resync
+      const idx = this._rows.findIndex((r) => r.id === incoming.id);
+      if (payload.eventType === "DELETE") {
+        if (idx !== -1) this._rows.splice(idx, 1);
+      } else if (idx !== -1) {
+        this._rows[idx] = payload.new;      // UPDATE
+      } else {
+        this._rows.push(payload.new);       // INSERT
+      }
+      this._scheduleRegroup();
+    },
+
+    // Coalesce a burst of changes (e.g. a multi-court insert fires several
+    // events) into a single regroup + re-render.
+    _scheduleRegroup() {
+      if (this._regroupTimer) return;
+      this._regroupTimer = setTimeout(() => {
+        this._regroupTimer = null;
+        this._cache = groupRows(this._rows);
+        emit("mwbc-bookings-updated");
+      }, 80);
     },
 
     _resubscribe() {
@@ -211,8 +261,8 @@
       if (this._authed) {
         this._channel = client
           .channel("mwbc-bookings-rt")
-          .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () =>
-            this._refresh()
+          .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, (payload) =>
+            this._applyRealtime(payload)
           )
           .subscribe();
       }
